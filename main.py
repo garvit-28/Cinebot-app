@@ -68,6 +68,27 @@ def root():
     return {"msg": "API running"}
 
 
+@app.get("/home")
+async def home(category: str = "popular"):
+    try:
+        data = await tmdb_get(
+            f"/movie/{category}",
+            {"language": "en-US", "page": 1},
+        )
+        return [
+            {
+                "tmdb_id": m.get("id"),
+                "title": m.get("title") or "Untitled",
+                "poster_url": img(m.get("poster_path")),
+            }
+            for m in data.get("results", [])
+            if m.get("id")
+        ]
+    except Exception as e:
+        print("HOME ERROR:", e)
+        return []
+
+
 @app.get("/tmdb/search")
 async def tmdb_search(query: str):
     try:
