@@ -71,8 +71,14 @@ def root():
 @app.get("/home")
 async def home(category: str = "popular"):
     try:
+        # trending has a different TMDB endpoint structure
+        if category == "trending":
+            path = "/trending/movie/week"
+        else:
+            path = f"/movie/{category}"
+
         data = await tmdb_get(
-            f"/movie/{category}",
+            path,
             {"language": "en-US", "page": 1},
         )
         return [
@@ -232,7 +238,7 @@ async def movie_search(
                 }
             )
 
-    # simple fallback recommendations from TMDB search
+    # genre based fallback from TMDB
     try:
         res = await tmdb_get(
             "/search/movie",
