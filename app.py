@@ -78,13 +78,19 @@ def poster_grid(cards, cols=6, key_prefix="grid"):
             idx += 1
 
             with colset[c]:
-                if m.get("poster_url"):
-                    st.image(m["poster_url"], use_container_width=True)
+                poster = m.get("poster_url") or ""
+                if poster and poster.startswith("http"):
+                    try:
+                        st.image(poster, use_container_width=True)
+                    except Exception:
+                        st.write("🎬")
                 else:
-                    st.write("No image")
+                    st.write("🎬")
 
-                if st.button("Open", key=f"{key_prefix}_{idx}"):
-                    goto_details(m["tmdb_id"])
+                tmdb_id = m.get("tmdb_id")
+                if tmdb_id:
+                    if st.button("Open", key=f"{key_prefix}_{idx}"):
+                        goto_details(tmdb_id)
 
                 st.caption(m.get("title", ""))
 
@@ -126,7 +132,7 @@ if st.session_state.view == "home":
 
             movies = data.get("results", [])
 
-            # 🔥 SUGGESTION DROPDOWN (ONLY ADDITION)
+            # SUGGESTION DROPDOWN
             options = ["-- Select a movie --"]
             movie_map = {}
 
@@ -134,7 +140,6 @@ if st.session_state.view == "home":
                 title = m.get("title", "Untitled")
                 year = (m.get("release_date") or "")[:4]
                 label = f"{title} ({year})" if year else title
-
                 options.append(label)
                 movie_map[label] = m.get("id")
 
@@ -143,7 +148,7 @@ if st.session_state.view == "home":
             if selected != "-- Select a movie --":
                 goto_details(movie_map[selected])
 
-            # Poster Grid (same as before)
+            # Poster Grid
             cards = []
             for m in movies:
                 cards.append(
@@ -167,7 +172,7 @@ if st.session_state.view == "home":
         if data:
             poster_grid(data, cols=grid_cols, key_prefix="home")
         else:
-            st.error("Home load failed")
+            st.error(f"Home load failed: {err}")
 
 
 # =============================
@@ -189,12 +194,18 @@ elif st.session_state.view == "details":
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        if data.get("poster_url"):
-            st.image(data["poster_url"], use_container_width=True)
+        poster = data.get("poster_url") or ""
+        if poster and poster.startswith("http"):
+            try:
+                st.image(poster, use_container_width=True)
+            except Exception:
+                st.write("🎬 No Image")
+        else:
+            st.write("🎬 No Image")
 
     with col2:
-        st.subheader(data.get("title"))
-        st.write(data.get("overview"))
+        st.subheader(data.get("title", "Untitled"))
+        st.write(data.get("overview", "No overview available."))
 
     # =============================
     # RECOMMENDATIONS
