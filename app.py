@@ -80,12 +80,10 @@ def poster_grid(cards, cols=6, key_prefix="grid"):
             with colset[c]:
                 poster = m.get("poster_url") or ""
                 if poster and poster.startswith("http"):
-                    try:
-                        st.image(poster, use_container_width=True)
-                    except Exception:
-                        st.write("🎬")
+                    st.markdown(f"<img src='{poster}' style='width:100%;border-radius:8px;'>", unsafe_allow_html=True)
+                    unsafe_allow_html=True
                 else:
-                    st.write("🎬")
+                    st.write("🎬 No Image")
 
                 tmdb_id = m.get("tmdb_id")
                 if tmdb_id:
