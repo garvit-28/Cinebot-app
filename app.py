@@ -80,8 +80,10 @@ def poster_grid(cards, cols=6, key_prefix="grid"):
             with colset[c]:
                 poster = m.get("poster_url") or ""
                 if poster and poster.startswith("http"):
-                    st.markdown(f"<img src='{poster}' style='width:100%;border-radius:8px;'>", unsafe_allow_html=True)
-                    unsafe_allow_html=True
+                    st.markdown(
+                        f"<img src='{poster}' style='width:100%;border-radius:8px;'>",
+                        unsafe_allow_html=True,
+                    )
                 else:
                     st.write("🎬 No Image")
 
@@ -194,10 +196,10 @@ elif st.session_state.view == "details":
     with col1:
         poster = data.get("poster_url") or ""
         if poster and poster.startswith("http"):
-            try:
-                st.image(poster, use_container_width=True)
-            except Exception:
-                st.write("🎬 No Image")
+            st.markdown(
+                f"<img src='{poster}' style='width:100%;border-radius:12px;'>",
+                unsafe_allow_html=True,
+            )
         else:
             st.write("🎬 No Image")
 
