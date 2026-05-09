@@ -115,7 +115,7 @@ with st.sidebar:
 # =============================
 # HEADER
 # =============================
-st.title("🎬 Movie Recommender")
+st.title("🎬 Movie Recommendation System")
 st.caption("Search → Open → Get AI-based recommendations")
 
 # =============================
