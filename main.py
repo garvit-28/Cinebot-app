@@ -239,12 +239,14 @@ async def chat_with_bot(req: ChatRequest):
     if not GEMINI_API_KEY or ai_client is None:
         return {"reply": "⚠️ Gemini API Key is missing. Please configure GEMINI_API_KEY in Render Environment Variables."}
 
+    # 1. Strict length & format control added here to save tokens
     system_instruction = (
-        "You are CineBot, an intelligent, enthusiastic AI Movie Recommender & Film Companion. "
-        "Help users find movies, explain plots without spoilers unless requested, suggest where to stream, "
-        "and give tailored suggestions based on their mood or preferences. Format responses cleanly with markdown."
+        "You are CineBot, an expert film assistant. Keep your answers brief and high-impact:\n"
+        "1. Skip pleasantries and greetings—dive straight into recommendations.\n"
+        "2. Recommend exactly 3 to 4 movies maximum.\n"
+        "3. Format cleanly: **Movie Title (Year)** - 1-sentence hook + OTT platform if known.\n"
+        "4. Keep the entire response under 150 words to stay concise and save tokens."
     )
-
     models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash-lite"]
     last_error = None
 
