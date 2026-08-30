@@ -239,7 +239,6 @@ async def chat_with_bot(req: ChatRequest):
     if not GEMINI_API_KEY or ai_client is None:
         return {"reply": "⚠️ Gemini API Key is missing. Please configure GEMINI_API_KEY in Render Environment Variables."}
 
-    # 1. Strict length & format control added here to save tokens
     system_instruction = (
         "You are CineBot, an expert film assistant. Keep your answers brief and high-impact:\n"
         "1. Skip pleasantries and greetings—dive straight into recommendations.\n"
