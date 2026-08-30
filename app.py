@@ -2,6 +2,7 @@ import os
 import urllib.parse
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 # =============================
 # CONFIG & SECRETS
@@ -47,6 +48,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
 
 # =============================
 # UTILITIES
@@ -313,6 +315,22 @@ elif st.session_state.view == "details":
             st.info(f"**Rent / Buy:** {', '.join(rent_buy)}")
         if not stream and not rent_buy:
             st.caption("Check JustWatch, Netflix, Disney+ Hotstar, or Prime Video for regional licenses.")
+
+    # Embedded Trailer Section
+    st.write("")
+    st.markdown("#### 🎬 Official Trailer")
+    trailer_query = urllib.parse.quote(f"{movie_title} official trailer")
+    embed_code = f"""
+    <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+        <iframe 
+            src="https://www.youtube-nocookie.com/embed?listType=search&list={trailer_query}" 
+            style="position: absolute; top:0; left: 0; width: 100%; height: 100%; border:0;" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen>
+        </iframe>
+    </div>
+    """
+    components.html(embed_code, height=380)
 
     st.divider()
     st.subheader(f"🎯 More Movies Similar to '{movie_title}'")
