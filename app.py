@@ -13,35 +13,87 @@ st.set_page_config(
     page_title="Movie Recommender System",
     page_icon="📽️",
     layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
+# =============================
+# RESPONSIVE CSS INJECTION
+# =============================
 st.markdown(
     """
     <style>
+    /* Global Container Adjustments */
     .main .block-container {
-        padding-top: 4.5rem !important;
+        padding-top: 2rem !important;
         padding-bottom: 2rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
         max-width: 1400px;
     }
+    
     h1 {
-        margin-top: 0.5rem !important;
-        padding-top: 0rem !important;
-        margin-bottom: 0.75rem !important;
+        font-size: clamp(1.5rem, 4vw, 2.3rem) !important;
+        margin-bottom: 0.5rem !important;
     }
+    
+    h2, h3 {
+        font-size: clamp(1.2rem, 3vw, 1.8rem) !important;
+    }
+
+    /* Card Title Styling */
     .movie-title { 
-        font-size: 0.95rem; 
-        line-height: 1.25rem; 
-        height: 2.5rem; 
+        font-size: 0.9rem; 
+        line-height: 1.2rem; 
+        height: 2.4rem; 
         overflow: hidden; 
         font-weight: 600; 
         margin-top: 6px; 
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
     }
+
     .rating-badge { 
-        font-size: 0.85rem; 
+        font-size: 0.8rem; 
         font-weight: 600; 
         color: #f59e0b; 
         margin-top: 2px; 
-        margin-bottom: 4px; 
+        margin-bottom: 6px; 
+    }
+
+    /* Video Embed Responsive Wrapper */
+    .video-container {
+        position: relative;
+        padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+        height: 0;
+        overflow: hidden;
+        max-width: 100%;
+        border-radius: 8px;
+    }
+    .video-container iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+    }
+
+    /* Mobile-Specific Breakpoints */
+    @media (max-width: 768px) {
+        .main .block-container {
+            padding-top: 1rem !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+        
+        /* Auto-wrap Streamlit columns on small screens if crammed */
+        [data-testid="column"] {
+            min-width: 140px !important;
+            flex: 1 1 45% !important;
+            margin-bottom: 1rem !important;
+        }
     }
     </style>
     """,
@@ -53,7 +105,7 @@ st.markdown(
 # UTILITIES
 # =============================
 def render_image(image_url):
-    """Safely render images across all Streamlit versions."""
+    """Safely render images responsively across Streamlit versions."""
     try:
         st.image(image_url, use_container_width=True)
     except TypeError:
@@ -76,7 +128,7 @@ if "chat_messages" not in st.session_state:
     st.session_state.chat_messages = [
         {
             "role": "assistant",
-            "content": "Hi! I am **CineBot** powered by Gemini AI 🎬. Ask for recommendations, streaming availability (*e.g., 'Avatar where can I watch it'*), or plot breakdowns!",
+            "content": "Hi! I am **CineBot** powered by Gemini AI 🎬. Ask for recommendations, streaming availability, or plot breakdowns!",
         }
     ]
 
@@ -102,7 +154,7 @@ def goto_chat():
 # =============================
 def api_get_json(path: str, params=None):
     try:
-        r = requests.get(f"{API_BASE}{path}", params=params, timeout=10)
+        r = requests.get(f"{API_BASE}{path}", params=params, timeout=15)
         return (r.json(), None) if r.status_code == 200 else (None, f"HTTP {r.status_code}")
     except Exception as e:
         return None, str(e)
@@ -110,25 +162,28 @@ def api_get_json(path: str, params=None):
 
 def api_post_json(path: str, payload=None):
     try:
-        r = requests.post(f"{API_BASE}{path}", json=payload, timeout=30)
+        r = requests.post(f"{API_BASE}{path}", json=payload, timeout=45)
         return (r.json(), None) if r.status_code == 200 else (None, f"HTTP {r.status_code}")
     except Exception as e:
         return None, str(e)
 
 
 # =============================
-# POSTER GRID COMPONENT
+# RESPONSIVE POSTER GRID
 # =============================
-def poster_grid(cards, cols=5, key_prefix="grid"):
+def poster_grid(cards, cols=4, key_prefix="grid"):
     if not cards:
         st.info("No movies found.")
         return
 
-    rows = (len(cards) + cols - 1) // cols
+    # Use max 4 columns to avoid squeezing on medium/mobile displays
+    actual_cols = min(cols, 5)
+    rows = (len(cards) + actual_cols - 1) // actual_cols
     idx = 0
+
     for _ in range(rows):
-        colset = st.columns(cols)
-        for c in range(cols):
+        colset = st.columns(actual_cols)
+        for c in range(actual_cols):
             if idx >= len(cards):
                 break
             movie_item = cards[idx]
@@ -144,6 +199,7 @@ def poster_grid(cards, cols=5, key_prefix="grid"):
 
                 render_image(poster)
                 st.markdown(f"<div class='movie-title'>{title_text}</div>", unsafe_allow_html=True)
+
                 if movie_item.get("rating"):
                     st.markdown(
                         f"<div class='rating-badge'>⭐ {round(float(movie_item.get('rating')), 1)} / 10</div>",
@@ -151,7 +207,7 @@ def poster_grid(cards, cols=5, key_prefix="grid"):
                     )
 
                 st.button(
-                    "Details",
+                    "View Details",
                     key=f"{key_prefix}_{idx}_{title_text}_{t_id}",
                     on_click=set_movie_details,
                     args=(title_text, t_id),
@@ -176,13 +232,13 @@ with st.sidebar:
         ["popular", "trending", "top_rated", "now_playing", "upcoming"],
     )
 
-    grid_cols = st.slider("Grid Columns", 4, 6, 5)
+    grid_cols = st.slider("Grid Columns (Desktop)", 2, 5, 4)
 
 
 # =============================
-# PERSISTENT TITLE
+# MAIN HEADER
 # =============================
-st.title("🎬 Movie Recommendation System")
+st.title("🎬 Movie Recommender")
 
 
 # =============================
@@ -190,7 +246,7 @@ st.title("🎬 Movie Recommendation System")
 # =============================
 if st.session_state.view == "home":
     search_query = st.text_input(
-        "🔍 Search any movie (e.g. Inception, Avatar, Titanic, The Dark Knight):",
+        "🔍 Search any movie (e.g. Inception, Avatar, 3 Idiots):",
         placeholder="Type movie name and press Enter...",
     )
 
@@ -199,26 +255,21 @@ if st.session_state.view == "home":
         similar_titles = bundle.get("recommendation_titles", []) if bundle else []
 
         if similar_titles:
-            dropdown_choices = [f"-- Similar movies to '{search_query}' (Click to view) --"] + similar_titles
-            col_sel, col_btn = st.columns([3, 1])
-            with col_sel:
-                picked_similar = st.selectbox(
-                    f"🎯 Movies Similar to '{search_query}':",
-                    options=dropdown_choices,
-                    index=0,
-                    key="search_similar_dropdown",
+            dropdown_choices = [f"-- Similar movies to '{search_query}' --"] + similar_titles
+            picked_similar = st.selectbox(
+                f"🎯 Quick Jump to Similar Movies:",
+                options=dropdown_choices,
+                index=0,
+                key="search_similar_dropdown",
+            )
+            if picked_similar != dropdown_choices[0]:
+                st.button(
+                    f"🚀 Open '{picked_similar}'",
+                    type="primary",
+                    on_click=set_movie_details,
+                    args=(picked_similar,),
+                    use_container_width=True,
                 )
-            with col_btn:
-                st.write("")
-                st.write("")
-                if picked_similar != dropdown_choices[0]:
-                    st.button(
-                        "🚀 Open Selected",
-                        type="primary",
-                        on_click=set_movie_details,
-                        args=(picked_similar,),
-                        use_container_width=True,
-                    )
 
         st.markdown("---")
         st.subheader(f"Search Results for *'{search_query}'*")
@@ -252,21 +303,24 @@ if st.session_state.view == "home":
 # =============================
 elif st.session_state.view == "chatbot":
     st.subheader("💬 CineBot: AI Movie Assistant")
-    st.caption("Ask anything about films, actors, where to stream, or custom recommendations.")
+    st.caption("Ask anything about films, actors, streaming platforms, or mood-based suggestions.")
 
     for msg in st.session_state.chat_messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Ask CineBot (e.g. 'Avatar where can I watch it', 'Best Sci-Fi movies')..."):
+    if prompt := st.chat_input("Ask CineBot (e.g. 'Best Hindi horror movies', 'Where to watch Inception')..."):
         st.session_state.chat_messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
             with st.spinner("CineBot is thinking..."):
-                res, _ = api_post_json("/chat", {"message": prompt})
-                bot_reply = res.get("reply") if res else "Could not connect to CineBot service."
+                res, err = api_post_json("/chat", {"message": prompt})
+                if res and "reply" in res:
+                    bot_reply = res["reply"]
+                else:
+                    bot_reply = f"⚠️ Connection Error: {err or 'Unable to fetch reply'}"
                 st.markdown(bot_reply)
 
         st.session_state.chat_messages.append({"role": "assistant", "content": bot_reply})
@@ -276,10 +330,7 @@ elif st.session_state.view == "chatbot":
 # VIEW 3: DETAILS & RECOMMENDATIONS
 # =============================
 elif st.session_state.view == "details":
-    nav_col1, _ = st.columns([1.5, 4.5])
-    with nav_col1:
-        st.button("⬅️ Back to Browse", type="primary", on_click=goto_home, use_container_width=True)
-
+    st.button("⬅️ Back to Browse", type="primary", on_click=goto_home, use_container_width=True)
     st.write("")
 
     selected_title = st.session_state.selected_movie_title
@@ -288,7 +339,8 @@ elif st.session_state.view == "details":
     data, _ = api_get_json("/movie/detail", {"title": selected_title, "tmdb_id": selected_tmdb_id})
     movie_title = data.get("title", selected_title) if data else selected_title
 
-    col1, col2 = st.columns([1, 2.5])
+    # Adaptive 2-column layout (stacks cleanly on phones)
+    col1, col2 = st.columns([1, 2])
 
     with col1:
         poster = data.get("poster_url") if data else None
@@ -313,18 +365,22 @@ elif st.session_state.view == "details":
         if rent_buy:
             st.info(f"**Rent / Buy:** {', '.join(rent_buy)}")
         if not stream and not rent_buy:
-            st.caption("Check JustWatch, Netflix, Disney+ Hotstar, or Prime Video for regional licenses.")
+            st.caption("Check JustWatch, Netflix, Disney+ Hotstar, or Prime Video for local rights.")
 
-    # In-Page Official Trailer Player (Zero Redirection)
+    # Responsive YouTube Player
     st.write("")
     st.markdown("#### 🎬 Official Trailer")
     trailer_key = data.get("trailer_key") if data else None
 
     if trailer_key:
-        embed_url = f"https://www.youtube-nocookie.com/embed/{trailer_key}?rel=0&modestbranding=1"
-        st.components.v1.iframe(src=embed_url, height=450, scrolling=False)
+        embed_html = f"""
+        <div class="video-container">
+            <iframe src="https://www.youtube-nocookie.com/embed/{trailer_key}?rel=0&modestbranding=1" allowfullscreen></iframe>
+        </div>
+        """
+        st.components.v1.html(embed_html, height=320)
     else:
-        st.caption("Direct trailer unavailable for this title. Search trailer on YouTube:")
+        st.caption("Direct trailer unavailable. Search trailer on YouTube:")
         trailer_query = urllib.parse.quote(f"{movie_title} official trailer")
         st.link_button(
             f"▶️ Search '{movie_title}' Trailer on YouTube",
@@ -336,7 +392,7 @@ elif st.session_state.view == "details":
     st.subheader(f"🎯 More Movies Similar to '{movie_title}'")
 
     with st.spinner("Finding recommendations..."):
-        bundle, _ = api_get_json("/movie/search", {"query": movie_title, "tfidf_top_n": 10})
+        bundle, _ = api_get_json("/movie/search", {"query": movie_title, "tfidf_top_n": 8})
 
     if bundle and bundle.get("tfidf_recommendations"):
         cards = [
