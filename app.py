@@ -53,7 +53,7 @@ st.markdown(
 # UTILITIES
 # =============================
 def render_image(image_url):
-    """Safely render images across both new and legacy Streamlit versions."""
+    """Safely render images across all Streamlit versions."""
     try:
         st.image(image_url, use_container_width=True)
     except TypeError:
@@ -315,7 +315,7 @@ elif st.session_state.view == "details":
         if not stream and not rent_buy:
             st.caption("Check JustWatch, Netflix, Disney+ Hotstar, or Prime Video for regional licenses.")
 
-    # In-Page Official Trailer Player (Plays in app directly)
+    # In-Page Official Trailer Player (Zero Redirection)
     st.write("")
     st.markdown("#### 🎬 Official Trailer")
     trailer_key = data.get("trailer_key") if data else None

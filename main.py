@@ -65,7 +65,7 @@ async def fetch_trailer_key(tmdb_id: int):
     """Fetches YouTube trailer key across all languages (Hindi, English, etc.)."""
     if not tmdb_id or tmdb_id <= 0:
         return None
-    # No language filter applied to ensure regional/foreign trailers are included
+    # No language filter applied to ensure Indian & regional trailers are included
     data = await tmdb_get(f"/movie/{tmdb_id}/videos")
     results = data.get("results", [])
 
@@ -238,29 +238,34 @@ class ChatRequest(BaseModel):
 @app.post("/chat")
 async def chat_with_bot(req: ChatRequest):
     if not GEMINI_API_KEY or ai_client is None:
-        return {"reply": "⚠️ Gemini API Key is missing. Please configure GEMINI_API_KEY in Render."}
+        return {"reply": "⚠️ Gemini API Key is missing. Please configure GEMINI_API_KEY in Render Environment Variables."}
 
     system_instruction = (
-        "You are CineBot, an intelligent and friendly AI Movie Recommender & Film Companion. "
-        "Help users find movies, provide streaming suggestions, break down plots (avoiding spoilers unless asked), "
-        "and suggest movies tailored to their tastes or moods. Keep responses clear and formatted with markdown."
+        "You are CineBot, an intelligent, enthusiastic AI Movie Recommender & Film Companion. "
+        "Help users find movies, explain plots without spoilers unless requested, suggest where to stream, "
+        "and give tailored suggestions based on their mood or preferences. Format responses cleanly with markdown."
     )
 
-    try:
-        response = ai_client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=req.message,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.7,
-                max_output_tokens=800,
-            ),
-        )
+    # Primary model: gemini-3.6-flash; Fallback model: gemini-3.5-flash-lite
+    models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"]
+    last_error = None
 
-        if response and response.text:
-            return {"reply": response.text}
-        return {"reply": "I couldn't generate a response. Please try another query!"}
+    for model_name in models_to_try:
+        try:
+            response = ai_client.models.generate_content(
+                model=model_name,
+                contents=req.message,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=0.7,
+                    max_output_tokens=800,
+                ),
+            )
+            if response and response.text:
+                return {"reply": response.text}
+        except Exception as e:
+            last_error = str(e)
+            continue
 
-    except Exception as e:
-        print(f"Chatbot Error: {str(e)}")
-        return {"reply": f"CineBot Error: {str(e)}"}
+    print(f"Chatbot Error across models: {last_error}")
+    return {"reply": f"CineBot encountered an error: {last_error}"}
