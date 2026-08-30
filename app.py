@@ -238,7 +238,15 @@ with st.sidebar:
 # =============================
 # MAIN HEADER
 # =============================
-st.title("🎬 Movie Recommender")
+st.markdown(
+    """
+    <div style="padding: 0.5rem 0 1.2rem 0; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1rem;">
+        <h1 style="margin: 0; font-size: 1.8rem; font-weight: 700;">🎬 CineBot <span style="font-weight: 300; opacity: 0.7; font-size: 1.4rem;">| AI Movie Recommender</span></h1>
+        <p style="margin: 0.2rem 0 0 0; font-size: 0.9rem; opacity: 0.65;">Personalized movie recommendations, instant streaming guides & AI companion.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 # =============================
