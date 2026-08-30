@@ -2,7 +2,6 @@ import os
 import urllib.parse
 import requests
 import streamlit as st
-import streamlit.components.v1 as components
 
 # =============================
 # CONFIG & SECRETS
@@ -316,21 +315,17 @@ elif st.session_state.view == "details":
         if not stream and not rent_buy:
             st.caption("Check JustWatch, Netflix, Disney+ Hotstar, or Prime Video for regional licenses.")
 
-    # Embedded Trailer Section
+    # Official Trailer Player Section
     st.write("")
     st.markdown("#### 🎬 Official Trailer")
-    trailer_query = urllib.parse.quote(f"{movie_title} official trailer")
-    embed_code = f"""
-    <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-        <iframe 
-            src="https://www.youtube-nocookie.com/embed?listType=search&list={trailer_query}" 
-            style="position: absolute; top:0; left: 0; width: 100%; height: 100%; border:0;" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            allowfullscreen>
-        </iframe>
-    </div>
-    """
-    components.html(embed_code, height=380)
+    trailer_key = data.get("trailer_key") if data else None
+
+    if trailer_key:
+        st.video(f"https://www.youtube.com/watch?v={trailer_key}")
+    else:
+        trailer_query = urllib.parse.quote(f"{movie_title} official trailer")
+        yt_url = f"https://www.youtube.com/results?search_query={trailer_query}"
+        st.link_button("▶️ Search Trailer on YouTube", yt_url, use_container_width=True)
 
     st.divider()
     st.subheader(f"🎯 More Movies Similar to '{movie_title}'")
