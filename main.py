@@ -28,7 +28,6 @@ TMDB_IMG = "https://image.tmdb.org/t/p/w780"
 TMDB_LOGO_BASE = "https://image.tmdb.org/t/p/w154"
 INDIAN_LANGUAGES = {"hi", "ta", "te", "ml", "kn", "bn", "mr", "pa", "gu"}
 
-# In-memory cache for validated working Gemini model
 CACHED_WORKING_MODEL = None
 
 
@@ -50,41 +49,69 @@ def img(path: str):
 
 
 async def fetch_trailer_key(tmdb_id: int):
+    """
+    Fetches the highest-quality official theatrical trailer,
+    strictly eliminating YouTube Shorts, vertical reels, promo clips, and TV spots.
+    """
     if not tmdb_id:
         return None
 
+    # Fetch with default locale, and fallback to US English if empty
     data = await tmdb_get(f"/movie/{tmdb_id}/videos")
     results = data.get("results", [])
+    if not results:
+        data = await tmdb_get(f"/movie/{tmdb_id}/videos", {"language": "en-US"})
+        results = data.get("results", [])
+
     if not results:
         return None
 
     youtube_videos = [v for v in results if v.get("site") == "YouTube"]
+    if not youtube_videos:
+        return None
 
-    def is_valid_trailer(v):
+    # Blacklist keywords that indicate 10-15s promo clips, shorts, or non-trailers
+    junk_keywords = [
+        "short", "shorts", "#shorts", "reel", "tiktok", "status",
+        "tv spot", "promo", "spot", "clip", "15s", "30s", "10s", "20s", "45s",
+        "glimpse", "sneak peek", "motion poster", "title reveal",
+        "announcement", "lyrical", "song", "theme", "making of", "behind the scenes", "bts"
+    ]
+
+    def is_clean_video(v):
         name = v.get("name", "").lower()
-        if any(bad in name for bad in ["#shorts", "short", "shorts", "reel", "tiktok"]):
-            return False
-        return True
+        return not any(junk in name for junk in junk_keywords)
 
-    clean_videos = [v for v in youtube_videos if is_valid_trailer(v)] or youtube_videos
+    clean_videos = [v for v in youtube_videos if is_clean_video(v)]
+    pool = clean_videos if clean_videos else youtube_videos
 
-    # Priority 1: Official Main Trailers
-    for v in clean_videos:
+    # Priority 1: Official Main / Theatrical / Final Trailers
+    tier_1_keywords = [
+        "official trailer", "theatrical trailer", "main trailer",
+        "trailer 1", "trailer 2", "official theatrical trailer", "final trailer"
+    ]
+    for v in pool:
+        name = v.get("name", "").lower()
+        if v.get("type") == "Trailer" and any(k in name for k in tier_1_keywords):
+            return v.get("key")
+
+    # Priority 2: Studio-flagged Official Trailer
+    for v in pool:
         if v.get("type") == "Trailer" and v.get("official") is True:
             return v.get("key")
 
-    # Priority 2: Any Full Trailer
-    for v in clean_videos:
+    # Priority 3: Any Trailer
+    for v in pool:
         if v.get("type") == "Trailer":
             return v.get("key")
 
-    # Priority 3: Official Teasers
+    # Priority 4: Clean Official Teasers
     for v in clean_videos:
         if v.get("type") == "Teaser" and v.get("official") is True:
             return v.get("key")
 
-    # Priority 4: Fallback to the first available clip
-    return clean_videos[0].get("key") if clean_videos else None
+    # Priority 5: Fallback to the first available video in pool
+    return pool[0].get("key") if pool else None
 
 
 async def fetch_watch_providers(tmdb_id: int, original_language: str = None, origin_country: list = None):
@@ -197,6 +224,7 @@ async def generate_gemini_reply(prompt: str) -> str:
                 last_error = str(ex)
                 continue
 
+        # Dynamic fallback discovery
         discovered_models = await get_available_gemini_models(key)
         for model_name in discovered_models:
             if model_name in candidate_models:

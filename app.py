@@ -33,7 +33,7 @@ st.markdown(
         max-width: 1400px;
     }
 
-    /* Ambient Hero Banner */
+    /* Ambient Hero Header */
     .hero-banner {
         background: radial-gradient(circle at 50% 0%, rgba(229, 9, 20, 0.14) 0%, transparent 70%),
                     var(--secondary-background-color);
@@ -84,7 +84,7 @@ st.markdown(
         line-height: 1.5;
     }
 
-    /* Poster Cards */
+    /* Cinematic Poster Cards */
     [data-testid="stImage"] img {
         border-radius: 12px;
         border: 1px solid rgba(128, 128, 128, 0.18);
@@ -161,7 +161,7 @@ st.markdown(
         border: 0;
     }
 
-    /* Clean Chat Message Styling */
+    /* Clean Chat Messages */
     [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
         background: var(--secondary-background-color) !important;
         border: 1px solid rgba(128, 128, 128, 0.2) !important;
@@ -178,6 +178,7 @@ st.markdown(
         padding: 14px 18px !important;
     }
 
+    /* Mobile Breakpoint */
     @media (max-width: 768px) {
         .main .block-container {
             padding-left: 0.5rem !important;
@@ -205,6 +206,7 @@ st.markdown(
 # UTILITIES & OTT LOGO RENDERER
 # =============================
 def render_image(image_url):
+    """Safely render images responsively across Streamlit versions."""
     try:
         st.image(image_url, use_container_width=True)
     except Exception:
@@ -215,6 +217,7 @@ def render_image(image_url):
 
 
 def format_provider_badges(providers_list):
+    """Renders streaming platform logos, handling both string & dict API formats."""
     if not providers_list:
         return "<div style='opacity: 0.7; font-size: 0.86rem; padding: 4px 0;'>Check local rights on Netflix, Prime Video, Disney+ Hotstar, or JioCinema.</div>"
 
@@ -244,6 +247,7 @@ def format_provider_badges(providers_list):
 
         raw_clean = name.lower().strip()
         matched_rule = next((r for r in brand_rules if any(k in raw_clean for k in r["keywords"])), None)
+
         bg_color = matched_rule["bg"] if matched_rule else "#1e293b"
 
         if tmdb_logo and str(tmdb_logo).startswith("http"):
