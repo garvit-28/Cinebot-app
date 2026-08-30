@@ -19,12 +19,12 @@ st.markdown(
     """
     <style>
     .main .block-container {
-        padding-top: 1.2rem !important;
+        padding-top: 4.5rem !important;
         padding-bottom: 2rem !important;
         max-width: 1400px;
     }
     h1 {
-        margin-top: 0rem !important;
+        margin-top: 0.5rem !important;
         padding-top: 0rem !important;
         margin-bottom: 0.75rem !important;
     }
