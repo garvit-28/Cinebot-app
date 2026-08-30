@@ -5,7 +5,6 @@ import asyncio
 import numpy as np
 import pandas as pd
 import httpx
-from google import genai
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -122,42 +121,21 @@ def recommend_tfidf(title, n=10):
 
 
 # =========================
-# AI QUERY ENGINE (SDK + Direct REST)
-# =========================
-# =========================
-# AI QUERY ENGINE (Gemini 3 Series)
+# AI QUERY ENGINE (Direct REST via HTTPX)
 # =========================
 async def query_gemini_ai(prompt: str) -> str:
     key = os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
-        print("[AI Error] GEMINI_API_KEY is empty in .env")
         return None
 
-    # Updated active model names recommended by the API
     candidate_models = ["gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash-lite"]
-
-    # 1. Primary: Official Google GenAI SDK
-    try:
-        from google import genai
-        ai_client = genai.Client(api_key=key)
-        for model_id in candidate_models:
-            try:
-                res = ai_client.models.generate_content(model=model_id, contents=prompt)
-                if res and res.text:
-                    return res.text
-            except Exception as e:
-                print(f"[SDK fail on {model_id}]: {e}")
-    except Exception as e:
-        print(f"[SDK Init Error]: {e}")
-
-    # 2. Secondary: Direct REST Fallback
     headers = {"Content-Type": "application/json", "x-goog-api-key": key}
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
     for model_id in candidate_models:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={key}"
-            resp = await client.post(url, headers=headers, json=payload, timeout=8.0)
+            resp = await client.post(url, headers=headers, json=payload, timeout=9.0)
             if resp.status_code == 200:
                 data = resp.json()
                 candidates = data.get("candidates", [])
@@ -165,10 +143,8 @@ async def query_gemini_ai(prompt: str) -> str:
                     parts = candidates[0].get("content", {}).get("parts", [])
                     if parts and "text" in parts[0]:
                         return parts[0]["text"]
-            else:
-                print(f"[REST fail on {model_id} HTTP {resp.status_code}]: {resp.text[:200]}")
-        except Exception as e:
-            print(f"[REST Exception on {model_id}]: {e}")
+        except Exception:
+            continue
 
     return None
 
@@ -355,23 +331,22 @@ async def ai_chatbot_reply(req: ChatRequest):
     if ai_reply:
         return {"reply": ai_reply}
 
-    # Backup answer if API is completely unavailable
     if "titanic" in user_msg.lower():
         return {
             "reply": (
-                "Here are great movies similar to **Titanic** (epic romance and disaster dramas):\n\n"
-                "- **The Notebook** (2004) – A legendary romance about enduring love against all odds.\n"
-                "- **Pearl Harbor** (2001) – A historical drama combining an intense love triangle with wartime disaster.\n"
-                "- **Romeo + Juliet** (1996) – Leonardo DiCaprio in a tragic romantic masterpiece.\n"
+                "Here are great movies similar to **Titanic**:\n\n"
+                "- **The Notebook** (2004) – A legendary romance about enduring love.\n"
+                "- **Pearl Harbor** (2001) – A historical drama combining an intense love triangle with disaster.\n"
+                "- **Romeo + Juliet** (1996) – Leonardo DiCaprio in a passionate tragic romance.\n"
                 "- **Atonement** (2007) – A period drama about love separated by tragedy."
             )
         }
 
     return {
-        "reply": f"Here is information on **{matched_title or user_msg}**: Available on major platforms like Disney+ Hotstar, Netflix, and Amazon Prime Video."
+        "reply": f"Here is information on **{matched_title or user_msg}**: Available on major streaming platforms like Disney+ Hotstar, Netflix, and Prime Video."
     }
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
