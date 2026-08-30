@@ -10,7 +10,7 @@ API_BASE = st.secrets.get("API_BASE", os.getenv("API_BASE", "http://127.0.0.1:80
 TMDB_IMG = "https://image.tmdb.org/t/p/w780"
 
 st.set_page_config(
-    page_title="Movie Recommender System",
+    page_title="CineBot - Movie Recommender System",
     page_icon="📽️",
     layout="wide",
     initial_sidebar_state="collapsed",
