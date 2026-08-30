@@ -1,3 +1,11 @@
 streamlit>=1.36.0
+fastapi
+uvicorn
+httpx
+pydantic
+pandas
+numpy
+scikit-learn
+google-generativeai
 requests
 rich<14.0.0
