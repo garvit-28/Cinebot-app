@@ -214,19 +214,19 @@ def render_image(image_url):
 
 
 def format_provider_badges(providers_list):
-    """Renders real streaming platform logos with TMDB & Vector SVG fallbacks."""
+    """Renders streaming platform logos, handling both string & dict API formats."""
     if not providers_list:
         return "<div style='opacity: 0.7; font-size: 0.86rem; padding: 4px 0;'>Check local rights on Netflix, Prime Video, Disney+ Hotstar, or JioCinema.</div>"
 
     brand_rules = [
         {"keywords": ["netflix"], "icon": "https://cdn.simpleicons.org/netflix/white", "bg": "#E50914"},
-        {"keywords": ["prime video", "amazon prime"], "icon": "https://cdn.simpleicons.org/primevideo/white", "bg": "#00A8E1"},
+        {"keywords": ["prime video", "amazon prime"], "icon": "https://cdn.jsdelivr.net/npm/simple-icons@v10/icons/primevideo.svg", "bg": "#00A8E1"},
         {"keywords": ["amazon video", "amazon"], "icon": "https://cdn.simpleicons.org/amazon/white", "bg": "#FF9900"},
-        {"keywords": ["disney", "hotstar"], "icon": "https://cdn.simpleicons.org/disneyplus/white", "bg": "#113CCF"},
-        {"keywords": ["apple tv", "apple tv plus", "itunes"], "icon": "https://cdn.simpleicons.org/appletv/white", "bg": "#1C1C1E"},
-        {"keywords": ["jiocinema", "jio cinema", "jio"], "icon": "https://cdn.simpleicons.org/airplayvideo/white", "bg": "#E11D48"},
+        {"keywords": ["disney", "hotstar"], "icon": "https://cdn.jsdelivr.net/npm/simple-icons@v10/icons/disneyplus.svg", "bg": "#113CCF"},
+        {"keywords": ["apple tv", "apple tv plus", "itunes"], "icon": "https://cdn.simpleicons.org/apple/white", "bg": "#1C1C1E"},
+        {"keywords": ["jiocinema", "jio cinema", "jio"], "icon": "https://cdn.jsdelivr.net/npm/simple-icons@v10/icons/airplayvideo.svg", "bg": "#E11D48"},
         {"keywords": ["youtube"], "icon": "https://cdn.simpleicons.org/youtube/white", "bg": "#FF0000"},
-        {"keywords": ["google play"], "icon": "https://cdn.simpleicons.org/googleplay/white", "bg": "#01875F"},
+        {"keywords": ["google play"], "icon": "https://cdn.jsdelivr.net/npm/simple-icons@v10/icons/googleplay.svg", "bg": "#01875F"},
         {"keywords": ["hulu"], "icon": "https://cdn.simpleicons.org/hulu/white", "bg": "#1CE783"},
         {"keywords": ["max", "hbo"], "icon": "https://cdn.simpleicons.org/max/white", "bg": "#002BE7"},
         {"keywords": ["zee5", "zee"], "icon": "https://cdn.simpleicons.org/zdf/white", "bg": "#8230C6"},
@@ -235,21 +235,22 @@ def format_provider_badges(providers_list):
 
     badges = []
     for item in providers_list:
-        name = item.get("name") if isinstance(item, dict) else str(item)
-        tmdb_logo = item.get("logo_url") if isinstance(item, dict) else None
+        if isinstance(item, dict):
+            name = item.get("name", "Unknown")
+            tmdb_logo = item.get("logo_url")
+        else:
+            name = str(item)
+            tmdb_logo = None
 
-        raw_clean = str(name).lower().strip()
+        raw_clean = name.lower().strip()
         matched_rule = next((r for r in brand_rules if any(k in raw_clean for k in r["keywords"])), None)
 
-        bg_color = matched_rule["bg"] if matched_rule else "#242c38"
-        
-        # Priority 1: Real TMDB Logo Image
+        bg_color = matched_rule["bg"] if matched_rule else "#1e293b"
+
         if tmdb_logo and str(tmdb_logo).startswith("http"):
-            icon_tag = f'<img src="{tmdb_logo}" width="22" height="22" style="border-radius: 5px; vertical-align: middle; margin-right: 8px; object-fit: cover;" />'
-        # Priority 2: High Quality Vector SVG Icon
-        elif matched_rule:
-            icon_tag = f'<img src="{matched_rule["icon"]}" width="16" height="16" style="vertical-align: middle; margin-right: 8px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));" />'
-        # Priority 3: Fallback Icon
+            icon_tag = f'<img src="{tmdb_logo}" width="20" height="20" style="border-radius: 4px; vertical-align: middle; margin-right: 8px; object-fit: cover; display: inline-block;" />'
+        elif matched_rule and matched_rule.get("icon"):
+            icon_tag = f'<img src="{matched_rule["icon"]}" width="16" height="16" style="vertical-align: middle; margin-right: 8px; filter: brightness(0) invert(1); display: inline-block;" />'
         else:
             icon_tag = '<span style="margin-right: 6px; font-size: 0.85rem;">📺</span>'
 
@@ -258,19 +259,19 @@ def format_provider_badges(providers_list):
                 display: inline-flex;
                 align-items: center;
                 background-color: {bg_color};
-                color: #ffffff;
+                color: #ffffff !important;
                 font-weight: 700;
-                font-size: 0.8rem;
-                padding: 6px 12px;
+                font-size: 0.78rem;
+                padding: 5px 12px;
                 border-radius: 8px;
                 margin-right: 8px;
                 margin-bottom: 8px;
                 border: 1px solid rgba(255, 255, 255, 0.15);
-                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+                box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
             ">{icon_tag}{name}</span>"""
         )
 
-    return f"<div style='display: flex; flex-wrap: wrap; align-items: center; margin-top: 4px;'>{''.join(badges)}</div>"
+    return f"<div style='display: flex; flex-wrap: wrap; align-items: center; margin-top: 6px;'>{''.join(badges)}</div>"
 
 
 # =============================
@@ -444,7 +445,6 @@ if st.session_state.view == "home":
         placeholder="Type a title like Inception, Oppenheimer, 3 Idiots, or Dune...",
     )
 
-    # Mood Exploration Chips
     st.markdown("<p style='font-size: 0.85rem; font-weight: 700; margin: 8px 0 4px 0; opacity: 0.85;'>🎭 Instant Vibe Search:</p>", unsafe_allow_html=True)
     vibe_cols = st.columns(4)
     vibes = [

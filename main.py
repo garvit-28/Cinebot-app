@@ -65,19 +65,17 @@ async def fetch_trailer_key(tmdb_id: int):
 async def fetch_watch_providers(tmdb_id: int, original_language: str = None, origin_country: list = None):
     if not tmdb_id:
         return {}
-    
+
     data = await tmdb_get(f"/movie/{tmdb_id}/watch/providers")
     results = data.get("results", {})
     if not results:
         return {}
 
-    # Check if movie originated from India
     is_indian = (
-        (original_language and original_language.lower() in INDIAN_LANGUAGES) or
-        (origin_country and any(c.upper() == "IN" for c in origin_country))
+        (original_language and original_language.lower() in INDIAN_LANGUAGES)
+        or (origin_country and any(c.upper() == "IN" for c in origin_country))
     )
 
-    # Prioritize IN -> US -> First available catalog
     region = results.get("IN") if is_indian else (results.get("IN") or results.get("US"))
     if not region and results:
         region = results.get("US") or next(iter(results.values()), {})
@@ -90,7 +88,7 @@ async def fetch_watch_providers(tmdb_id: int, original_language: str = None, ori
             if name:
                 extracted.append({
                     "name": name,
-                    "logo_url": f"{TMDB_LOGO_BASE}{logo_path}" if logo_path else None
+                    "logo_url": f"{TMDB_LOGO_BASE}{logo_path}" if logo_path else None,
                 })
         return extracted
 
@@ -166,7 +164,7 @@ async def movie_search(query: str = Query(...), tfidf_top_n: int = Query(8)):
                     "title": t,
                     "poster_url": img(r.get("poster_path")),
                     "rating": float(r.get("vote_average", 7.5)),
-                }
+                },
             })
 
     return {
@@ -196,7 +194,7 @@ async def movie_detail(title: str = Query(None), tmdb_id: int = Query(None)):
         }
 
     data_res = await tmdb_get(f"/movie/{final_id}", {"language": "en-US"})
-    
+
     orig_lang = data_res.get("original_language", "")
     prod_countries = [c.get("iso_3166_1", "") for c in data_res.get("production_countries", [])]
 
