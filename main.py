@@ -14,10 +14,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not TMDB_API_KEY:
     raise ValueError("TMDB_API_KEY environment variable is required.")
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY environment variable is required.")
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+# Initialize Gemini Client if key exists
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 app = FastAPI(title="CineBot Recommendation & Film Backend")
 
@@ -222,13 +221,21 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 async def chat_endpoint(payload: ChatRequest):
+    if not client:
+        return {
+            "reply": "⚠️ **API Key Missing**: `GEMINI_API_KEY` is not configured in the backend environment variables."
+        }
+
     sys_instruction = (
         "You are CineBot, an expert cinema AI assistant. Provide concise, enthusiastic, "
         "and accurate film recommendations, where-to-watch streaming guides, cast info, and plot breakdowns."
     )
-    
-    # Priority attempt: Gemini 2.5 Flash -> Fallback: Gemini 1.5 Flash
-    for model_name in ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"]:
+
+    # Robust model priority pipeline
+    models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]
+    last_error = ""
+
+    for model_name in models_to_try:
         try:
             response = client.models.generate_content(
                 model=model_name,
@@ -240,7 +247,18 @@ async def chat_endpoint(payload: ChatRequest):
             )
             return {"reply": response.text}
         except Exception as e:
-            print(f"Error on model {model_name}: {e}")
+            last_error = str(e)
+            print(f"Failed on {model_name}: {last_error}")
             continue
 
-    raise HTTPException(status_code=500, detail="Gemini AI service currently unavailable.")
+    # Return a friendly message instead of a 500 crash
+    if "429" in last_error or "RESOURCE_EXHAUSTED" in last_error:
+        return {
+            "reply": "⚠️ **Daily Quota Exhausted**: Your Google Gemini API key has exceeded its free rate limit (15 req/min or daily limit). Please create a new key on [Google AI Studio](https://aistudio.google.com/) and update Render."
+        }
+    elif "API_KEY" in last_error or "PERMISSION_DENIED" in last_error:
+        return {
+            "reply": "⚠️ **Invalid API Key**: Please verify `GEMINI_API_KEY` in your environment variables on Render."
+        }
+
+    return {"reply": f"⚠️ **Gemini API Notice:** {last_error}"}
