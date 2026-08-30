@@ -1,5 +1,6 @@
 import os
 import difflib
+from datetime import date
 import httpx
 from fastapi import FastAPI, Query
 from pydantic import BaseModel
@@ -116,8 +117,22 @@ async def home_feed(category: str = "popular"):
         "upcoming": "/movie/upcoming",
     }
     target = endpoint_map.get(category, "/movie/popular")
-    data = await tmdb_get(target, {"language": "en-US", "page": 1})
+
+    # Pass region parameter for localized upcoming release windows
+    params = {"language": "en-US", "page": 1}
+    if category == "upcoming":
+        params["region"] = "IN"
+
+    data = await tmdb_get(target, params)
     results = data.get("results", [])
+
+    # Filter out any movie whose release date is earlier than today
+    today_str = date.today().isoformat()
+    if category == "upcoming":
+        results = [
+            m for m in results
+            if m.get("release_date") and m.get("release_date") >= today_str
+        ]
 
     return [
         {
@@ -125,6 +140,7 @@ async def home_feed(category: str = "popular"):
             "title": m.get("title") or "Untitled",
             "poster_url": img(m.get("poster_path")),
             "rating": float(m.get("vote_average", 7.5)),
+            "release_date": m.get("release_date"),
         }
         for m in results
         if m.get("title")
