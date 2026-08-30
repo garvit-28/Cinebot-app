@@ -209,8 +209,11 @@ def render_image(image_url):
     """Safely render images responsively across Streamlit versions."""
     try:
         st.image(image_url, use_container_width=True)
-    except TypeError:
-        st.image(image_url, use_column_width=True)
+    except Exception:
+        try:
+            st.image(image_url, width="stretch")
+        except Exception:
+            st.image(image_url)
 
 
 def format_provider_badges(providers_list):
@@ -603,7 +606,16 @@ elif st.session_state.view == "details":
 
         providers = data.get("providers", {}) if data else {}
         stream = providers.get("flatrate", [])
-        rent_buy = list(set(providers.get("rent", []) + providers.get("buy", [])))
+
+        # Safe dictionary deduplication
+        combined_rent_buy = providers.get("rent", []) + providers.get("buy", [])
+        seen_names = set()
+        rent_buy = []
+        for item in combined_rent_buy:
+            p_name = item.get("name") if isinstance(item, dict) else str(item)
+            if p_name not in seen_names:
+                seen_names.add(p_name)
+                rent_buy.append(item)
 
         st.markdown("#### 📺 Where to Watch")
         if stream:
