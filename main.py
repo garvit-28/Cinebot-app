@@ -218,23 +218,43 @@ async def movie_detail(title: str = Query(None), tmdb_id: int = Query(None)):
 
 class ChatRequest(BaseModel):
     message: str
+    model: str = "gemini-3.6-flash"
 
 
 @app.post("/chat")
 async def chat_endpoint(payload: ChatRequest):
+    chosen_model = payload.model or "gemini-3.6-flash"
     try:
         sys_instruction = (
             "You are CineBot, an expert cinema AI assistant. Provide concise, enthusiastic, "
             "and accurate film recommendations, where-to-watch streaming guides, cast info, and plot breakdowns."
         )
         response = client.models.generate_content(
-            model="gemini-3.6-flash",
+            model=chosen_model,
             contents=payload.message,
             config=types.GenerateContentConfig(
                 system_instruction=sys_instruction,
                 temperature=0.7,
             ),
         )
-        return {"reply": response.text}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"reply": response.text, "model_used": chosen_model}
+    except Exception as primary_error:
+        fallback_models = ["gemini-3.6-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+        for fb in fallback_models:
+            if fb == chosen_model:
+                continue
+            try:
+                response = client.models.generate_content(
+                    model=fb,
+                    contents=payload.message,
+                    config=types.GenerateContentConfig(
+                        system_instruction="You are CineBot, an expert cinema AI assistant.",
+                        temperature=0.7,
+                    ),
+                )
+                return {"reply": response.text, "model_used": f"{fb} (fallback)"}
+            except Exception:
+                continue
+        
+        print(f"Chat error across all models: {primary_error}")
+        raise HTTPException(status_code=500, detail=str(primary_error))

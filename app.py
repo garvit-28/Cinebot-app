@@ -391,6 +391,25 @@ with st.sidebar:
         st.button("💬 AI Bot", on_click=goto_chat, use_container_width=True)
 
     st.markdown("---")
+    st.markdown("#### 🧠 **Gemini AI Engine**")
+    
+    model_options = {
+        "⚡ Gemini 3.6 Flash (Fastest)": "gemini-3.6-flash",
+        "🪶 Gemini 3.6 Lite (Ultra-Low Latency)": "gemini-3.6-lite",
+        "🚀 Gemini 2.5 Flash": "gemini-2.5-flash",
+        "💡 Gemini 2.0 Flash": "gemini-2.0-flash",
+        "💎 Gemini 1.5 Pro (Deep Reasoning)": "gemini-1.5-pro",
+    }
+    
+    selected_model_label = st.selectbox(
+        "Active Model",
+        options=list(model_options.keys()),
+        index=0,
+        label_visibility="collapsed",
+    )
+    active_gemini_model = model_options[selected_model_label]
+
+    st.markdown("---")
     st.markdown("#### 🍿 **Browse Feed**")
 
     category_map = {
@@ -515,7 +534,7 @@ if st.session_state.view == "home":
 # VIEW 2: AI CHATBOT
 # =============================
 elif st.session_state.view == "chatbot":
-    st.subheader("💬 CineBot: AI Movie Assistant")
+    st.subheader(f"💬 CineBot Assistant ({selected_model_label.split('(')[0].strip()})")
     st.caption("Ask for film recommendations, actor filmographies, streaming availability, or plot breakdowns.")
 
     for msg in st.session_state.chat_messages:
@@ -529,7 +548,7 @@ elif st.session_state.view == "chatbot":
 
         with st.chat_message("assistant"):
             with st.spinner("CineBot is analyzing..."):
-                res, err = api_post_json("/chat", {"message": prompt})
+                res, err = api_post_json("/chat", {"message": prompt, "model": active_gemini_model})
                 if res and "reply" in res:
                     bot_reply = res["reply"]
                 else:
