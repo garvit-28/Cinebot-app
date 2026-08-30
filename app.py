@@ -24,7 +24,7 @@ st.markdown(
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Bebas+Neue&display=swap');
 
-    /* Global Viewport Reset */
+    /* Global Container */
     .main .block-container {
         padding-top: 1.2rem !important;
         padding-bottom: 3.5rem !important;
@@ -98,7 +98,7 @@ st.markdown(
         border-color: #e50914;
     }
 
-    /* Movie Card Titles */
+    /* Movie Titles */
     .movie-title { 
         font-family: 'Plus Jakarta Sans', sans-serif;
         font-size: 0.92rem; 
@@ -113,7 +113,7 @@ st.markdown(
         -webkit-box-orient: vertical;
     }
 
-    /* Golden Rating Pill */
+    /* Rating Badge */
     .rating-badge { 
         display: inline-flex;
         align-items: center;
@@ -128,7 +128,7 @@ st.markdown(
         margin: 4px 0 8px 0;
     }
 
-    /* Active UI Segment Controls */
+    /* Segmented Controls & Pills */
     div[data-testid="stSegmentedControl"] button[aria-checked="true"],
     div[data-testid="stPills"] button[aria-checked="true"] {
         background: linear-gradient(135deg, #e50914 0%, #b80710 100%) !important;
@@ -138,16 +138,19 @@ st.markdown(
         font-weight: 700 !important;
     }
 
-    /* Cinema Video Frame */
+    /* Full-Width Cinema Video Player Frame */
     .video-container {
         position: relative;
+        width: 100%;
+        max-width: 900px;
         padding-bottom: 56.25%;
         height: 0;
         overflow: hidden;
         border-radius: 14px;
-        border: 1px solid rgba(128, 128, 128, 0.2);
+        border: 1px solid rgba(128, 128, 128, 0.22);
         background: #000;
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+        margin-top: 0.5rem;
     }
     .video-container iframe {
         position: absolute;
@@ -158,22 +161,24 @@ st.markdown(
         border: 0;
     }
 
-    /* High-Tech AI Chatbot Messages */
+    /* Clean Chat Messages */
     [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
-        background: rgba(229, 9, 20, 0.05) !important;
-        border: 1px solid rgba(229, 9, 20, 0.25) !important;
-        border-radius: 14px !important;
+        background: var(--secondary-background-color) !important;
+        border: 1px solid rgba(128, 128, 128, 0.2) !important;
+        border-left: 4px solid #e50914 !important;
+        border-radius: 12px !important;
         padding: 14px 18px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
     }
 
     [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
-        background: rgba(245, 158, 11, 0.05) !important;
-        border: 1px solid rgba(245, 158, 11, 0.25) !important;
-        border-radius: 14px !important;
+        background: rgba(128, 128, 128, 0.08) !important;
+        border: 1px solid rgba(128, 128, 128, 0.2) !important;
+        border-radius: 12px !important;
         padding: 14px 18px !important;
     }
 
-    /* Mobile Adaptations */
+    /* Mobile Breakpoint */
     @media (max-width: 768px) {
         .main .block-container {
             padding-left: 0.5rem !important;
@@ -198,7 +203,7 @@ st.markdown(
 
 
 # =============================
-# UTILITIES & LOGO RENDERER
+# UTILITIES & OTT LOGO RENDERER
 # =============================
 def render_image(image_url):
     """Safely render images responsively across Streamlit versions."""
@@ -209,7 +214,7 @@ def render_image(image_url):
 
 
 def format_provider_badges(providers_list):
-    """Renders real streaming platform logos with flexible fuzzy brand matching."""
+    """Renders real streaming platform logos with TMDB & Vector SVG fallbacks."""
     if not providers_list:
         return "<div style='opacity: 0.7; font-size: 0.86rem; padding: 4px 0;'>Check local rights on Netflix, Prime Video, Disney+ Hotstar, or JioCinema.</div>"
 
@@ -229,49 +234,41 @@ def format_provider_badges(providers_list):
     ]
 
     badges = []
-    for raw_name in providers_list:
-        raw_clean = str(raw_name).lower().strip()
-        matched = False
+    for item in providers_list:
+        name = item.get("name") if isinstance(item, dict) else str(item)
+        tmdb_logo = item.get("logo_url") if isinstance(item, dict) else None
 
-        for rule in brand_rules:
-            if any(k in raw_clean for k in rule["keywords"]):
-                icon_tag = f'<img src="{rule["icon"]}" width="15" height="15" style="vertical-align: middle; margin-right: 7px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));" />'
-                badges.append(
-                    f"""<span style="
-                        display: inline-flex;
-                        align-items: center;
-                        background-color: {rule['bg']};
-                        color: #ffffff;
-                        font-weight: 700;
-                        font-size: 0.78rem;
-                        padding: 6px 12px;
-                        border-radius: 8px;
-                        margin-right: 8px;
-                        margin-bottom: 8px;
-                        letter-spacing: 0.2px;
-                        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-                    ">{icon_tag}{raw_name}</span>"""
-                )
-                matched = True
-                break
+        raw_clean = str(name).lower().strip()
+        matched_rule = next((r for r in brand_rules if any(k in raw_clean for k in r["keywords"])), None)
 
-        if not matched:
-            badges.append(
-                f"""<span style="
-                    display: inline-flex;
-                    align-items: center;
-                    background: linear-gradient(135deg, #334155, #1e293b);
-                    color: #ffffff;
-                    font-weight: 700;
-                    font-size: 0.78rem;
-                    padding: 6px 12px;
-                    border-radius: 8px;
-                    margin-right: 8px;
-                    margin-bottom: 8px;
-                    border: 1px solid rgba(255,255,255,0.1);
-                    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-                "><span style="margin-right: 5px;">📺</span>{raw_name}</span>"""
-            )
+        bg_color = matched_rule["bg"] if matched_rule else "#242c38"
+        
+        # Priority 1: Real TMDB Logo Image
+        if tmdb_logo and str(tmdb_logo).startswith("http"):
+            icon_tag = f'<img src="{tmdb_logo}" width="22" height="22" style="border-radius: 5px; vertical-align: middle; margin-right: 8px; object-fit: cover;" />'
+        # Priority 2: High Quality Vector SVG Icon
+        elif matched_rule:
+            icon_tag = f'<img src="{matched_rule["icon"]}" width="16" height="16" style="vertical-align: middle; margin-right: 8px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));" />'
+        # Priority 3: Fallback Icon
+        else:
+            icon_tag = '<span style="margin-right: 6px; font-size: 0.85rem;">📺</span>'
+
+        badges.append(
+            f"""<span style="
+                display: inline-flex;
+                align-items: center;
+                background-color: {bg_color};
+                color: #ffffff;
+                font-weight: 700;
+                font-size: 0.8rem;
+                padding: 6px 12px;
+                border-radius: 8px;
+                margin-right: 8px;
+                margin-bottom: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+            ">{icon_tag}{name}</span>"""
+        )
 
     return f"<div style='display: flex; flex-wrap: wrap; align-items: center; margin-top: 4px;'>{''.join(badges)}</div>"
 
@@ -292,7 +289,7 @@ if "chat_messages" not in st.session_state:
     st.session_state.chat_messages = [
         {
             "role": "assistant",
-            "content": "Hi! I am **CineBot** powered by Gemini AI 🎬. Ask for recommendations, OTT availability, or deep plot breakdowns!",
+            "content": "Hi! I am **CineBot** powered by Gemini AI 🎬. Ask for recommendations, streaming availability, or deep plot breakdowns!",
         }
     ]
 
@@ -616,7 +613,7 @@ elif st.session_state.view == "details":
         if not stream and not rent_buy:
             st.markdown(format_provider_badges([]), unsafe_allow_html=True)
 
-    # Responsive YouTube Player
+    # Full-Width Trailer Player
     st.write("")
     st.markdown("#### 🎬 Official Trailer")
     trailer_key = data.get("trailer_key") if data else None
@@ -627,7 +624,7 @@ elif st.session_state.view == "details":
             <iframe src="https://www.youtube-nocookie.com/embed/{trailer_key}?rel=0&modestbranding=1" allowfullscreen></iframe>
         </div>
         """
-        st.components.v1.html(embed_html, height=320)
+        st.components.v1.html(embed_html, height=520)
     else:
         st.caption("Direct trailer unavailable. Search trailer on YouTube:")
         trailer_query = urllib.parse.quote(f"{movie_title} official trailer")

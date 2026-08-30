@@ -1,210 +1,177 @@
 import os
-import difflib
-from datetime import date
 import httpx
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import pandas as pd
-import numpy as np
 from google import genai
 from google.genai import types
-
-app = FastAPI(title="CineBot Recommendation API")
 
 # =============================
 # ENVIRONMENT & CONFIG
 # =============================
-TMDB_API_KEY = os.getenv("TMDB_API_KEY", "")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+if not TMDB_API_KEY:
+    raise ValueError("TMDB_API_KEY environment variable is required.")
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY environment variable is required.")
+
+client = genai.Client(api_key=GEMINI_API_KEY)
+
+app = FastAPI(title="CineBot Recommendation & Film Backend")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 TMDB_BASE = "https://api.themoviedb.org/3"
 TMDB_IMG = "https://image.tmdb.org/t/p/w780"
-
-# Initialize modern Google GenAI Client
-ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
-
-# =============================
-# LOAD LOCAL TF-IDF DATA
-# =============================
-DATASET_PATH = "movies_processed.csv"
-SIMILARITY_PATH = "similarity_matrix.npy"
-
-df = None
-similarity = None
-
-try:
-    if os.path.exists(DATASET_PATH):
-        df = pd.read_csv(DATASET_PATH)
-        df["title_clean"] = df["title"].astype(str).str.lower().str.strip()
-    if os.path.exists(SIMILARITY_PATH):
-        similarity = np.load(SIMILARITY_PATH)
-except Exception as e:
-    print(f"Warning: Could not load local dataset or similarity matrix: {e}")
+TMDB_LOGO_BASE = "https://image.tmdb.org/t/p/w154"
+INDIAN_LANGUAGES = {"hi", "ta", "te", "ml", "kn", "bn", "mr", "pa", "gu"}
 
 
 # =============================
-# TMDB ASYNC HELPERS
+# TMDB API HELPERS
 # =============================
-def img(path):
+async def tmdb_get(endpoint: str, params: dict = None):
+    p = params.copy() if params else {}
+    p["api_key"] = TMDB_API_KEY
+    async with httpx.AsyncClient(timeout=15.0) as http_client:
+        r = await http_client.get(f"{TMDB_BASE}{endpoint}", params=p)
+        if r.status_code != 200:
+            return {}
+        return r.json()
+
+
+def img(path: str):
     return f"{TMDB_IMG}{path}" if path else None
 
 
-async def tmdb_get(endpoint: str, params: dict = None):
-    if not TMDB_API_KEY:
-        return {}
-    p = {"api_key": TMDB_API_KEY}
-    if params:
-        p.update(params)
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
-            r = await client.get(f"{TMDB_BASE}{endpoint}", params=p)
-            return r.json() if r.status_code == 200 else {}
-        except Exception:
-            return {}
-
-
 async def fetch_trailer_key(tmdb_id: int):
-    """Fetches YouTube trailer key across all languages (Hindi, English, etc.)."""
-    if not tmdb_id or tmdb_id <= 0:
+    if not tmdb_id:
         return None
     data = await tmdb_get(f"/movie/{tmdb_id}/videos")
-    results = data.get("results", [])
-
-    # 1. Prioritize official YouTube trailer
-    for v in results:
-        if v.get("site") == "YouTube" and v.get("type") == "Trailer" and v.get("official") is True:
-            return v.get("key")
-    # 2. Any trailer
-    for v in results:
-        if v.get("site") == "YouTube" and v.get("type") == "Trailer":
-            return v.get("key")
-    # 3. Any YouTube clip / teaser
-    for v in results:
-        if v.get("site") == "YouTube" and v.get("key"):
+    for v in data.get("results", []):
+        if v.get("site") == "YouTube" and v.get("type") in ["Trailer", "Teaser"]:
             return v.get("key")
     return None
 
 
-async def fetch_watch_providers(tmdb_id: int):
-    """Fetches streaming, rent, and buy providers (Default: IN / US fallback)."""
+async def fetch_watch_providers(tmdb_id: int, original_language: str = None, origin_country: list = None):
     if not tmdb_id:
         return {}
+    
     data = await tmdb_get(f"/movie/{tmdb_id}/watch/providers")
     results = data.get("results", {})
-    region = results.get("IN") or results.get("US") or {}
+    if not results:
+        return {}
 
-    flatrate = [p.get("provider_name") for p in region.get("flatrate", [])]
-    rent = [p.get("provider_name") for p in region.get("rent", [])]
-    buy = [p.get("provider_name") for p in region.get("buy", [])]
+    # Check if movie originated from India
+    is_indian = (
+        (original_language and original_language.lower() in INDIAN_LANGUAGES) or
+        (origin_country and any(c.upper() == "IN" for c in origin_country))
+    )
 
-    return {"flatrate": flatrate, "rent": rent, "buy": buy}
+    # Prioritize IN -> US -> First available catalog
+    region = results.get("IN") if is_indian else (results.get("IN") or results.get("US"))
+    if not region and results:
+        region = results.get("US") or next(iter(results.values()), {})
+
+    def extract(items):
+        extracted = []
+        for p in items:
+            name = p.get("provider_name")
+            logo_path = p.get("logo_path")
+            if name:
+                extracted.append({
+                    "name": name,
+                    "logo_url": f"{TMDB_LOGO_BASE}{logo_path}" if logo_path else None
+                })
+        return extracted
+
+    return {
+        "flatrate": extract(region.get("flatrate", [])),
+        "rent": extract(region.get("rent", [])),
+        "buy": extract(region.get("buy", [])),
+    }
 
 
 # =============================
-# BACKEND ROUTES
+# ROUTES
 # =============================
 @app.get("/")
 def root():
-    return {"msg": "Movie Recommender API running"}
+    return {"message": "CineBot Backend API is running."}
 
 
 @app.get("/home")
-async def home_feed(category: str = "popular"):
-    endpoint_map = {
-        "popular": "/movie/popular",
-        "trending": "/trending/movie/day",
-        "top_rated": "/movie/top_rated",
-        "now_playing": "/movie/now_playing",
-        "upcoming": "/movie/upcoming",
-    }
-    target = endpoint_map.get(category, "/movie/popular")
+async def home_feed(category: str = Query("popular")):
+    valid_categories = ["popular", "top_rated", "now_playing", "upcoming", "trending"]
+    if category not in valid_categories:
+        category = "popular"
 
-    # Pass region parameter for localized upcoming release windows
-    params = {"language": "en-US", "page": 1}
-    if category == "upcoming":
-        params["region"] = "IN"
+    if category == "trending":
+        data = await tmdb_get("/trending/movie/day")
+    else:
+        data = await tmdb_get(f"/movie/{category}")
 
-    data = await tmdb_get(target, params)
-    results = data.get("results", [])
-
-    # Filter out any movie whose release date is earlier than today
-    today_str = date.today().isoformat()
-    if category == "upcoming":
-        results = [
-            m for m in results
-            if m.get("release_date") and m.get("release_date") >= today_str
-        ]
-
-    return [
-        {
-            "tmdb_id": m.get("id"),
-            "title": m.get("title") or "Untitled",
-            "poster_url": img(m.get("poster_path")),
-            "rating": float(m.get("vote_average", 7.5)),
-            "release_date": m.get("release_date"),
-        }
-        for m in results
-        if m.get("title")
-    ]
+    movies = []
+    for m in data.get("results", []):
+        if m.get("title") and m.get("poster_path"):
+            movies.append({
+                "tmdb_id": m.get("id"),
+                "title": m.get("title"),
+                "poster_url": img(m.get("poster_path")),
+                "rating": float(m.get("vote_average", 7.5)),
+            })
+    return movies
 
 
 @app.get("/tmdb/search")
-async def search_tmdb(query: str):
-    data = await tmdb_get("/search/movie", {"query": query, "language": "en-US", "page": 1})
+async def tmdb_search(query: str = Query(...)):
+    data = await tmdb_get("/search/movie", {"query": query})
     return data
 
 
 @app.get("/movie/search")
-async def search_and_recommend(query: str, tfidf_top_n: int = 10):
-    recommendation_titles = []
-    tfidf_recommendations = []
+async def movie_search(query: str = Query(...), tfidf_top_n: int = Query(8)):
+    search_res = await tmdb_get("/search/movie", {"query": query})
+    results = search_res.get("results", [])
+    if not results:
+        return {"recommendation_titles": [], "tfidf_recommendations": []}
 
-    if df is not None and similarity is not None:
-        q_clean = query.lower().strip()
-        matches = difflib.get_close_matches(q_clean, df["title_clean"].tolist(), n=1, cutoff=0.5)
+    target_id = results[0].get("id")
+    recs_res = await tmdb_get(f"/movie/{target_id}/recommendations")
+    recs_list = recs_res.get("results", [])
 
-        if matches:
-            idx = df[df["title_clean"] == matches[0]].index[0]
-            distances = sorted(list(enumerate(similarity[idx])), reverse=True, key=lambda x: x[1])
+    if not recs_list:
+        similar_res = await tmdb_get(f"/movie/{target_id}/similar")
+        recs_list = similar_res.get("results", [])
 
-            for i in distances[1 : tfidf_top_n + 1]:
-                m_title = df.iloc[i[0]]["title"]
-                m_id = int(df.iloc[i[0]]["movie_id"]) if "movie_id" in df.columns else None
-                recommendation_titles.append(m_title)
-                tfidf_recommendations.append(
-                    {
-                        "title": m_title,
-                        "tmdb": {
-                            "tmdb_id": m_id,
-                            "title": m_title,
-                            "poster_url": None,
-                            "rating": 7.5,
-                        },
-                    }
-                )
-
-    # Fallback to TMDB recommendations if matrix returns empty
-    if not tfidf_recommendations:
-        search_res = await tmdb_get("/search/movie", {"query": query})
-        first_match = search_res.get("results", [])[0] if search_res.get("results") else None
-        if first_match:
-            recs = await tmdb_get(f"/movie/{first_match['id']}/recommendations")
-            for m in recs.get("results", [])[:tfidf_top_n]:
-                recommendation_titles.append(m.get("title"))
-                tfidf_recommendations.append(
-                    {
-                        "title": m.get("title"),
-                        "tmdb": {
-                            "tmdb_id": m.get("id"),
-                            "title": m.get("title"),
-                            "poster_url": img(m.get("poster_path")),
-                            "rating": float(m.get("vote_average", 7.5)),
-                        },
-                    }
-                )
+    titles = []
+    tfidf_recs = []
+    for r in recs_list[:tfidf_top_n]:
+        t = r.get("title")
+        if t:
+            titles.append(t)
+            tfidf_recs.append({
+                "title": t,
+                "tmdb": {
+                    "tmdb_id": r.get("id"),
+                    "title": t,
+                    "poster_url": img(r.get("poster_path")),
+                    "rating": float(r.get("vote_average", 7.5)),
+                }
+            })
 
     return {
-        "recommendation_titles": recommendation_titles,
-        "tfidf_recommendations": tfidf_recommendations,
+        "recommendation_titles": titles,
+        "tfidf_recommendations": tfidf_recs,
     }
 
 
@@ -229,7 +196,15 @@ async def movie_detail(title: str = Query(None), tmdb_id: int = Query(None)):
         }
 
     data_res = await tmdb_get(f"/movie/{final_id}", {"language": "en-US"})
-    providers = await fetch_watch_providers(final_id)
+    
+    orig_lang = data_res.get("original_language", "")
+    prod_countries = [c.get("iso_3166_1", "") for c in data_res.get("production_countries", [])]
+
+    providers = await fetch_watch_providers(
+        tmdb_id=final_id,
+        original_language=orig_lang,
+        origin_country=prod_countries,
+    )
     trailer_key = await fetch_trailer_key(final_id)
 
     return {
@@ -243,44 +218,25 @@ async def movie_detail(title: str = Query(None), tmdb_id: int = Query(None)):
     }
 
 
-# =============================
-# GEMINI CHATBOT ROUTE
-# =============================
 class ChatRequest(BaseModel):
     message: str
 
 
 @app.post("/chat")
-async def chat_with_bot(req: ChatRequest):
-    if not GEMINI_API_KEY or ai_client is None:
-        return {"reply": "⚠️ Gemini API Key is missing. Please configure GEMINI_API_KEY in Render Environment Variables."}
-
-    system_instruction = (
-        "You are CineBot, an expert film assistant. Keep your answers brief and high-impact:\n"
-        "1. Skip pleasantries and greetings—dive straight into recommendations.\n"
-        "2. Recommend exactly 3 to 4 movies maximum.\n"
-        "3. Format cleanly: **Movie Title (Year)** - 1-sentence hook + OTT platform if known.\n"
-        "4. Keep the entire response under 150 words to stay concise and save tokens."
-    )
-    models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash-lite"]
-    last_error = None
-
-    for model_name in models_to_try:
-        try:
-            response = ai_client.models.generate_content(
-                model=model_name,
-                contents=req.message,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=0.3,
-                    max_output_tokens=2048,
-                ),
-            )
-            if response and response.text:
-                return {"reply": response.text}
-        except Exception as e:
-            last_error = str(e)
-            continue
-
-    print(f"Chatbot Error across models: {last_error}")
-    return {"reply": f"CineBot encountered an error: {last_error}"}
+async def chat_endpoint(payload: ChatRequest):
+    try:
+        sys_instruction = (
+            "You are CineBot, an expert cinema AI assistant. Provide concise, enthusiastic, "
+            "and accurate film recommendations, where-to-watch streaming guides, cast info, and plot breakdowns."
+        )
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=payload.message,
+            config=types.GenerateContentConfig(
+                system_instruction=sys_instruction,
+                temperature=0.7,
+            ),
+        )
+        return {"reply": response.text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
