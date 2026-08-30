@@ -4,9 +4,9 @@ import requests
 import streamlit as st
 
 # =============================
-# CONFIG
+# CONFIG & SECRETS
 # =============================
-API_BASE = os.getenv("API_BASE", "http://127.0.0.1:8000")
+API_BASE = st.secrets.get("API_BASE", os.getenv("API_BASE", "http://127.0.0.1:8000"))
 TMDB_IMG = "https://image.tmdb.org/t/p/w780"
 
 st.set_page_config(
@@ -49,6 +49,17 @@ st.markdown(
 )
 
 # =============================
+# UTILITIES
+# =============================
+def render_image(image_url):
+    """Safely render images across both new and legacy Streamlit versions."""
+    try:
+        st.image(image_url, use_container_width=True)
+    except TypeError:
+        st.image(image_url, use_column_width=True)
+
+
+# =============================
 # STATE MANAGEMENT
 # =============================
 if "view" not in st.session_state:
@@ -62,7 +73,10 @@ if "selected_tmdb_id" not in st.session_state:
 
 if "chat_messages" not in st.session_state:
     st.session_state.chat_messages = [
-        {"role": "assistant", "content": "Hi! I am **CineBot** powered by Gemini AI 🎬. Ask for recommendations, streaming availability (*e.g., 'Avatar where can I watch it'*), or plot breakdowns!"}
+        {
+            "role": "assistant",
+            "content": "Hi! I am **CineBot** powered by Gemini AI 🎬. Ask for recommendations, streaming availability (*e.g., 'Avatar where can I watch it'*), or plot breakdowns!",
+        }
     ]
 
 
@@ -127,10 +141,13 @@ def poster_grid(cards, cols=5, key_prefix="grid"):
                     clean = urllib.parse.quote(f"{title_text} movie poster")
                     poster = f"https://tse2.mm.bing.net/th?q={clean}&w=500&h=750&c=7&rs=1&p=0"
 
-                st.image(poster, use_container_width=True)
+                render_image(poster)
                 st.markdown(f"<div class='movie-title'>{title_text}</div>", unsafe_allow_html=True)
                 if movie_item.get("rating"):
-                    st.markdown(f"<div class='rating-badge'>⭐ {round(float(movie_item.get('rating')), 1)} / 10</div>", unsafe_allow_html=True)
+                    st.markdown(
+                        f"<div class='rating-badge'>⭐ {round(float(movie_item.get('rating')), 1)} / 10</div>",
+                        unsafe_allow_html=True,
+                    )
 
                 st.button(
                     "Details",
@@ -176,7 +193,6 @@ if st.session_state.view == "home":
         placeholder="Type movie name and press Enter...",
     )
 
-    # When searched: show similar movie suggestions dropdown right beneath the search bar
     if search_query:
         bundle, _ = api_get_json("/movie/search", {"query": search_query, "tfidf_top_n": 10})
         similar_titles = bundle.get("recommendation_titles", []) if bundle else []
@@ -189,7 +205,7 @@ if st.session_state.view == "home":
                     f"🎯 Movies Similar to '{search_query}':",
                     options=dropdown_choices,
                     index=0,
-                    key="search_similar_dropdown"
+                    key="search_similar_dropdown",
                 )
             with col_btn:
                 st.write("")
@@ -200,7 +216,7 @@ if st.session_state.view == "home":
                         type="primary",
                         on_click=set_movie_details,
                         args=(picked_similar,),
-                        use_container_width=True
+                        use_container_width=True,
                     )
 
         st.markdown("---")
@@ -278,7 +294,7 @@ elif st.session_state.view == "details":
         if not poster or not str(poster).startswith("http"):
             clean = urllib.parse.quote(f"{movie_title} movie poster")
             poster = f"https://tse2.mm.bing.net/th?q={clean}&w=500&h=750&c=7&rs=1&p=0"
-        st.image(poster, use_container_width=True)
+        render_image(poster)
 
     with col2:
         st.header(movie_title)
