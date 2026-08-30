@@ -11,12 +11,171 @@ TMDB_IMG = "https://image.tmdb.org/t/p/w780"
 
 st.set_page_config(
     page_title="CineBot - Movie Recommender System",
-    page_icon="📽️",
+    page_icon="🎬",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
 
+# =============================
+# THEME-ADAPTIVE CINEMA CSS
+# =============================
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Bebas+Neue&display=swap');
+
+    /* Global Container */
+    .main .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 3rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: 1400px;
+    }
+
+    /* Hero Banner: Adapts seamlessly to Light & Dark Modes */
+    .hero-banner {
+        background: radial-gradient(circle at 50% 0%, rgba(229, 9, 20, 0.12) 0%, transparent 75%),
+                    var(--secondary-background-color);
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        border-radius: 16px;
+        padding: 2rem 1.2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .hero-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        padding: 4px 12px;
+        border-radius: 9999px;
+        background: rgba(229, 9, 20, 0.12);
+        color: #e50914;
+        border: 1px solid rgba(229, 9, 20, 0.3);
+        margin-bottom: 0.6rem;
+    }
+
+    .hero-title {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: clamp(2.4rem, 6vw, 3.8rem);
+        letter-spacing: 1.5px;
+        line-height: 1.1;
+        margin: 0;
+        background: linear-gradient(135deg, #e50914 0%, #f59e0b 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: clamp(0.85rem, 1.8vw, 1rem);
+        color: var(--text-color);
+        opacity: 0.75;
+        font-weight: 500;
+        max-width: 600px;
+        margin: 0.5rem auto 0 auto;
+        line-height: 1.4;
+    }
+
+    /* Poster Card Hover Effects */
+    [data-testid="stImage"] img {
+        border-radius: 10px;
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    [data-testid="stImage"] img:hover {
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 10px 25px rgba(229, 9, 20, 0.25);
+        border-color: #e50914;
+    }
+
+    /* Movie Title */
+    .movie-title { 
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 0.9rem; 
+        line-height: 1.25rem; 
+        height: 2.5rem; 
+        overflow: hidden; 
+        font-weight: 700; 
+        color: var(--text-color);
+        margin-top: 6px; 
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    /* Rating Badge */
+    .rating-badge { 
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.78rem; 
+        font-weight: 700; 
+        color: #d97706;
+        background: rgba(245, 158, 11, 0.12);
+        padding: 2px 7px;
+        border-radius: 6px;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        margin: 3px 0 6px 0;
+    }
+
+    /* Active Segmented Control & Radio Styling */
+    div[data-testid="stSegmentedControl"] button[aria-checked="true"],
+    div[data-testid="stPills"] button[aria-checked="true"] {
+        background: linear-gradient(135deg, #e50914 0%, #b80710 100%) !important;
+        color: #ffffff !important;
+        border-color: #e50914 !important;
+        box-shadow: 0 4px 12px rgba(229, 9, 20, 0.35) !important;
+    }
+
+    /* Responsive YouTube Player */
+    .video-container {
+        position: relative;
+        padding-bottom: 56.25%;
+        height: 0;
+        overflow: hidden;
+        border-radius: 12px;
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        background: #000;
+    }
+    .video-container iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+    }
+
+    /* Mobile Adaptations */
+    @media (max-width: 768px) {
+        .main .block-container {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+        [data-testid="column"] {
+            min-width: 140px !important;
+            flex: 1 1 45% !important;
+            margin-bottom: 0.8rem !important;
+        }
+    }
+    </style>
+
+    <div class="hero-banner">
+        <div class="hero-pill">⚡ Powered by Gemini AI & TMDB</div>
+        <h1 class="hero-title">🎬 CINEBOT</h1>
+        <p class="hero-subtitle">Intelligent Film Discovery, Semantic Search & Instant Streaming Guides</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 # =============================
@@ -94,7 +253,6 @@ def poster_grid(cards, cols=4, key_prefix="grid"):
         st.info("No movies found.")
         return
 
-    # Use max 4 columns to avoid squeezing on medium/mobile displays
     actual_cols = min(cols, 5)
     rows = (len(cards) + actual_cols - 1) // actual_cols
     idx = 0
@@ -137,7 +295,7 @@ def poster_grid(cards, cols=4, key_prefix="grid"):
 # SIDEBAR
 # =============================
 with st.sidebar:
-    st.title("🎬 Navigation")
+    st.markdown("### 🎬 **Navigation**")
     c1, c2 = st.columns(2)
     with c1:
         st.button("🏠 Home", on_click=goto_home, use_container_width=True)
@@ -145,186 +303,54 @@ with st.sidebar:
         st.button("💬 AI Bot", on_click=goto_chat, use_container_width=True)
 
     st.markdown("---")
-    category = st.selectbox(
-        "Browse Category",
-        ["popular", "trending", "top_rated", "now_playing", "upcoming"],
-    )
-
-    grid_cols = st.slider("Grid Columns (Desktop)", 2, 5, 4)
-
-
-# =============================
-# MAIN HEADER
-# =============================
-
-# =============================
-# CINEMATIC THEME & RESPONSIVE CSS
-# =============================
-st.markdown(
-    """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Bebas+Neue&display=swap');
-
-    /* Global Base */
-    .main .block-container {
-        padding-top: 1.5rem !important;
-        padding-bottom: 3rem !important;
-        padding-left: 1.2rem !important;
-        padding-right: 1.2rem !important;
-        max-width: 1400px;
+    st.markdown("#### 🍿 **Browse Catalog**")
+    
+    category_map = {
+        "🔥 Popular": "popular",
+        "⚡ Trending Today": "trending",
+        "⭐ Top Rated": "top_rated",
+        "🎬 In Theaters": "now_playing",
+        "⏳ Upcoming": "upcoming",
     }
+    
+    # Attractive Category Selector (falls back gracefully if pills not supported)
+    try:
+        chosen_cat_label = st.pills(
+            "Select Feed",
+            options=list(category_map.keys()),
+            default="🔥 Popular",
+            label_visibility="collapsed",
+        ) or "🔥 Popular"
+    except Exception:
+        chosen_cat_label = st.selectbox(
+            "Select Feed",
+            options=list(category_map.keys()),
+            index=0,
+            label_visibility="collapsed",
+        )
 
-    /* Cinematic Hero Header */
-    .hero-banner {
-        background: radial-gradient(circle at 50% 0%, rgba(229, 9, 20, 0.18) 0%, rgba(15, 17, 23, 0) 75%),
-                    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
-        padding: 2.2rem 1.5rem;
-        text-align: center;
-        margin-bottom: 2rem;
-        backdrop-filter: blur(12px);
-        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
-    }
+    category = category_map[chosen_cat_label]
 
-    .hero-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 1.8px;
-        text-transform: uppercase;
-        padding: 5px 14px;
-        border-radius: 9999px;
-        background: linear-gradient(90deg, rgba(229, 9, 20, 0.2), rgba(245, 158, 11, 0.2));
-        color: #fca5a5;
-        border: 1px solid rgba(229, 9, 20, 0.4);
-        margin-bottom: 0.8rem;
-    }
-
-    .hero-title {
-        font-family: 'Bebas Neue', sans-serif;
-        font-size: clamp(2.8rem, 7vw, 4.5rem);
-        letter-spacing: 2px;
-        line-height: 1;
-        margin: 0;
-        background: linear-gradient(135deg, #ffffff 30%, #e50914 80%, #f59e0b 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-shadow: 0 10px 30px rgba(229, 9, 20, 0.35);
-    }
-
-    .hero-subtitle {
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: clamp(0.9rem, 2vw, 1.1rem);
-        color: #94a3b8;
-        font-weight: 400;
-        max-width: 620px;
-        margin: 0.6rem auto 0 auto;
-        line-height: 1.5;
-    }
-
-    /* Card Glow and Hover Mechanics */
-    [data-testid="stImage"] img {
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), 
-                    box-shadow 0.35s ease, 
-                    border-color 0.35s ease;
-    }
-    [data-testid="stImage"] img:hover {
-        transform: translateY(-6px) scale(1.03);
-        box-shadow: 0 16px 32px rgba(229, 9, 20, 0.25), 0 0 15px rgba(245, 158, 11, 0.15);
-        border-color: rgba(229, 9, 20, 0.5);
-    }
-
-    /* Typography & Badges */
-    .movie-title { 
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: 0.95rem; 
-        line-height: 1.3rem; 
-        height: 2.6rem; 
-        overflow: hidden; 
-        font-weight: 600; 
-        margin-top: 8px; 
-        color: #f1f5f9;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-    }
-
-    .rating-badge { 
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 0.8rem; 
-        font-weight: 700; 
-        color: #fbbf24;
-        background: rgba(251, 191, 36, 0.12);
-        padding: 2px 8px;
-        border-radius: 6px;
-        border: 1px solid rgba(251, 191, 36, 0.25);
-        margin: 4px 0 8px 0;
-    }
-
-    /* Styled Buttons */
-    div.stButton > button {
-        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        color: #f8fafc;
-        font-weight: 600;
-        border-radius: 8px;
-        transition: all 0.25s ease;
-    }
-    div.stButton > button:hover {
-        background: linear-gradient(180deg, #e50914 0%, #b80710 100%);
-        border-color: #e50914;
-        color: #ffffff;
-        transform: translateY(-2px);
-        box-shadow: 0 8px 18px rgba(229, 9, 20, 0.4);
-    }
-
-    /* Video Player Frame */
-    .video-container {
-        position: relative;
-        padding-bottom: 56.25%;
-        height: 0;
-        overflow: hidden;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
-    }
-    .video-container iframe {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        border: 0;
-    }
-
-    /* Mobile Adaptations */
-    @media (max-width: 768px) {
-        .hero-banner {
-            padding: 1.5rem 1rem;
-        }
-        [data-testid="column"] {
-            min-width: 145px !important;
-            flex: 1 1 45% !important;
-            margin-bottom: 1rem !important;
-        }
-    }
-    </style>
-
-    <div class="hero-banner">
-        <div class="hero-pill">⚡ Powered by Gemini AI & TMDB</div>
-        <h1 class="hero-title">🎬 CINEBOT</h1>
-        <p class="hero-subtitle">Intelligent Film Discovery, Semantic Search & Instant Streaming Guides</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+    st.markdown("---")
+    st.markdown("#### 📐 **Poster Density**")
+    
+    # Segmented Desktop Density Picker
+    try:
+        grid_cols = st.segmented_control(
+            "Desktop Columns",
+            options=[2, 3, 4, 5],
+            default=4,
+            label_visibility="collapsed",
+            help="Choose how many movie cards display per row on desktop",
+        ) or 4
+    except Exception:
+        grid_cols = st.radio(
+            "Desktop Columns",
+            options=[2, 3, 4, 5],
+            index=2,
+            horizontal=True,
+            label_visibility="collapsed",
+        )
 
 
 # =============================
@@ -376,7 +402,7 @@ if st.session_state.view == "home":
             st.warning(f"No results found for '{search_query}'.")
 
     else:
-        st.subheader(f"{category.replace('_', ' ').title()} Movies")
+        st.subheader(f"{chosen_cat_label} Movies")
         data, err = api_get_json("/home", {"category": category})
         if data:
             poster_grid(data, cols=grid_cols, key_prefix=f"home_{category}")
