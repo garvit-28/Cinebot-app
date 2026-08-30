@@ -1,12 +1,12 @@
 import os
-import re
 import difflib
 import httpx
 from fastapi import FastAPI, Query
 from pydantic import BaseModel
 import pandas as pd
 import numpy as np
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 app = FastAPI(title="CineBot Recommendation API")
 
@@ -18,8 +18,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 TMDB_BASE = "https://api.themoviedb.org/3"
 TMDB_IMG = "https://image.tmdb.org/t/p/w780"
 
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# Initialize modern Google GenAI Client
+ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 # =============================
 # LOAD LOCAL TF-IDF DATA
@@ -37,7 +37,7 @@ try:
     if os.path.exists(SIMILARITY_PATH):
         similarity = np.load(SIMILARITY_PATH)
 except Exception as e:
-    print(f"Warning: Could not load local matrix/dataset: {e}")
+    print(f"Warning: Could not load local dataset or similarity matrix: {e}")
 
 
 # =============================
@@ -62,21 +62,22 @@ async def tmdb_get(endpoint: str, params: dict = None):
 
 
 async def fetch_trailer_key(tmdb_id: int):
-    """Fetches the official YouTube trailer video ID from TMDB."""
+    """Fetches YouTube trailer key across all languages (Hindi, English, etc.)."""
     if not tmdb_id or tmdb_id <= 0:
         return None
-    data = await tmdb_get(f"/movie/{tmdb_id}/videos", {"language": "en-US"})
+    # No language filter applied to ensure regional/foreign trailers are included
+    data = await tmdb_get(f"/movie/{tmdb_id}/videos")
     results = data.get("results", [])
 
-    # Priority 1: Official Trailer
+    # 1. Prioritize official YouTube trailer
     for v in results:
         if v.get("site") == "YouTube" and v.get("type") == "Trailer" and v.get("official") is True:
             return v.get("key")
-    # Priority 2: Any Trailer
+    # 2. Any trailer
     for v in results:
         if v.get("site") == "YouTube" and v.get("type") == "Trailer":
             return v.get("key")
-    # Priority 3: Any YouTube Video/Teaser/Clip
+    # 3. Any YouTube clip / teaser
     for v in results:
         if v.get("site") == "YouTube" and v.get("key"):
             return v.get("key")
@@ -236,17 +237,30 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 async def chat_with_bot(req: ChatRequest):
-    if not GEMINI_API_KEY:
-        return {"reply": "Gemini API Key is missing on the server."}
+    if not GEMINI_API_KEY or ai_client is None:
+        return {"reply": "⚠️ Gemini API Key is missing. Please configure GEMINI_API_KEY in Render."}
+
+    system_instruction = (
+        "You are CineBot, an intelligent and friendly AI Movie Recommender & Film Companion. "
+        "Help users find movies, provide streaming suggestions, break down plots (avoiding spoilers unless asked), "
+        "and suggest movies tailored to their tastes or moods. Keep responses clear and formatted with markdown."
+    )
 
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        system_instruction = (
-            "You are CineBot, an intelligent and friendly AI Movie Recommender & Film Companion. "
-            "Help users find movies, provide streaming suggestions, breakdown plots (avoiding spoilers unless asked), "
-            "and suggest movies tailored to their tastes or moods. Keep responses clear and formatted with markdown."
+        response = ai_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=req.message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.7,
+                max_output_tokens=800,
+            ),
         )
-        response = model.generate_content(f"{system_instruction}\n\nUser Question: {req.message}")
-        return {"reply": response.text}
+
+        if response and response.text:
+            return {"reply": response.text}
+        return {"reply": "I couldn't generate a response. Please try another query!"}
+
     except Exception as e:
-        return {"reply": f"Sorry, CineBot encountered an issue: {str(e)}"}
+        print(f"Chatbot Error: {str(e)}")
+        return {"reply": f"CineBot Error: {str(e)}"}

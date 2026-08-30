@@ -110,7 +110,7 @@ def api_get_json(path: str, params=None):
 
 def api_post_json(path: str, payload=None):
     try:
-        r = requests.post(f"{API_BASE}{path}", json=payload, timeout=15)
+        r = requests.post(f"{API_BASE}{path}", json=payload, timeout=30)
         return (r.json(), None) if r.status_code == 200 else (None, f"HTTP {r.status_code}")
     except Exception as e:
         return None, str(e)
@@ -315,7 +315,7 @@ elif st.session_state.view == "details":
         if not stream and not rent_buy:
             st.caption("Check JustWatch, Netflix, Disney+ Hotstar, or Prime Video for regional licenses.")
 
-    # In-Page Official Trailer Player (Zero Redirection)
+    # In-Page Official Trailer Player (Plays in app directly)
     st.write("")
     st.markdown("#### 🎬 Official Trailer")
     trailer_key = data.get("trailer_key") if data else None
@@ -324,7 +324,13 @@ elif st.session_state.view == "details":
         embed_url = f"https://www.youtube-nocookie.com/embed/{trailer_key}?rel=0&modestbranding=1"
         st.components.v1.iframe(src=embed_url, height=450, scrolling=False)
     else:
-        st.info("Trailer is currently not available for this title.")
+        st.caption("Direct trailer unavailable for this title. Search trailer on YouTube:")
+        trailer_query = urllib.parse.quote(f"{movie_title} official trailer")
+        st.link_button(
+            f"▶️ Search '{movie_title}' Trailer on YouTube",
+            f"https://www.youtube.com/results?search_query={trailer_query}",
+            use_container_width=True,
+        )
 
     st.divider()
     st.subheader(f"🎯 More Movies Similar to '{movie_title}'")

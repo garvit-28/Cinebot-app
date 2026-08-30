@@ -6,6 +6,6 @@ pydantic
 pandas
 numpy
 scikit-learn
-google-generativeai
+google-genai
 requests
 rich<14.0.0
