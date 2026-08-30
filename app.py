@@ -328,7 +328,9 @@ def api_get_json(path: str, params=None):
 def api_post_json(path: str, payload=None):
     try:
         r = requests.post(f"{API_BASE}{path}", json=payload, timeout=45)
-        return (r.json(), None) if r.status_code == 200 else (None, f"HTTP {r.status_code}")
+        if r.status_code == 200:
+            return r.json(), None
+        return None, f"HTTP {r.status_code}: {r.text}"
     except Exception as e:
         return None, str(e)
 

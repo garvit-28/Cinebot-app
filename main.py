@@ -28,6 +28,9 @@ TMDB_IMG = "https://image.tmdb.org/t/p/w780"
 TMDB_LOGO_BASE = "https://image.tmdb.org/t/p/w154"
 INDIAN_LANGUAGES = {"hi", "ta", "te", "ml", "kn", "bn", "mr", "pa", "gu"}
 
+# In-memory cache for the validated working model
+CACHED_WORKING_MODEL = None
+
 
 # =============================
 # TMDB API HELPERS
@@ -94,9 +97,30 @@ async def fetch_watch_providers(tmdb_id: int, original_language: str = None, ori
 
 
 # =============================
-# GEMINI GENERATION ENGINE
+# AUTO-DISCOVERY GEMINI ENGINE
 # =============================
+async def get_available_gemini_models(api_key: str) -> list:
+    """Queries Google ListModels API to find active models supported by this key."""
+    list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.get(list_url)
+            if res.status_code == 200:
+                data = res.json()
+                valid_models = []
+                for m in data.get("models", []):
+                    methods = m.get("supportedGenerationMethods", [])
+                    name = m.get("name", "").replace("models/", "")
+                    if "generateContent" in methods and "gemini" in name:
+                        valid_models.append(name)
+                return valid_models
+    except Exception as e:
+        print(f"ListModels error: {e}")
+    return []
+
+
 async def generate_gemini_reply(prompt: str) -> str:
+    global CACHED_WORKING_MODEL
     key = os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
         return "⚠️ **Configuration Error**: `GEMINI_API_KEY` is not set in Render environment variables."
@@ -106,22 +130,33 @@ async def generate_gemini_reply(prompt: str) -> str:
         "and accurate film recommendations, where-to-watch streaming guides, cast info, and plot breakdowns."
     )
 
-    # 1. Primary Strategy: Direct REST API (Works across all environments without SDK conflicts)
-    models_to_try = ["gemini-3.6-flash", "gemini-3.6-lite", "gemini-2.0-flash"]
+    # 1. Use cached model if already discovered
+    candidate_models = []
+    if CACHED_WORKING_MODEL:
+        candidate_models.append(CACHED_WORKING_MODEL)
+
+    # 2. Add standard known models
+    candidate_models.extend(["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"])
+
+    # Remove duplicates while preserving order
+    candidate_models = list(dict.fromkeys(candidate_models))
+
     last_error = ""
 
-    for model_name in models_to_try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
-        payload = {
-            "contents": [{"parts": [{"text": f"{system_prompt}\n\nUser Question: {prompt}"}]}],
-            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 800}
-        }
-        try:
-            async with httpx.AsyncClient(timeout=25.0) as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        # First attempt: Try candidate models
+        for model_name in candidate_models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+            payload = {
+                "contents": [{"parts": [{"text": f"{system_prompt}\n\nUser Question: {prompt}"}]}],
+                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 800},
+            }
+            try:
                 res = await client.post(url, json=payload)
                 data = res.json()
 
                 if res.status_code == 200:
+                    CACHED_WORKING_MODEL = model_name
                     candidates = data.get("candidates", [])
                     if candidates and "content" in candidates[0]:
                         parts = candidates[0]["content"].get("parts", [])
@@ -130,15 +165,38 @@ async def generate_gemini_reply(prompt: str) -> str:
 
                 error_obj = data.get("error", {})
                 last_error = error_obj.get("message", f"HTTP {res.status_code}")
-                
+
                 if "RESOURCE_EXHAUSTED" in last_error or "quota" in last_error.lower():
-                    return "⚠️ **Gemini Free Quota Limit Reached**: Your API key has temporarily exceeded its rate/token limit. Please wait 60 seconds or generate a fresh key on [Google AI Studio](https://aistudio.google.com/)."
+                    return "⚠️ **Gemini Rate Limit Reached**: Your API key has temporarily reached its rate limit. Please wait 30 seconds or create a new key on [Google AI Studio](https://aistudio.google.com/)."
                 if "API_KEY_INVALID" in last_error or "unregistered" in last_error.lower():
                     return "⚠️ **Invalid Gemini Key**: The `GEMINI_API_KEY` provided is invalid. Please verify it in your Render settings."
 
-        except Exception as ex:
-            last_error = str(ex)
-            continue
+            except Exception as ex:
+                last_error = str(ex)
+                continue
+
+        # Second attempt: Query ListModels dynamically to find active models
+        discovered_models = await get_available_gemini_models(key)
+        for model_name in discovered_models:
+            if model_name in candidate_models:
+                continue
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+            payload = {
+                "contents": [{"parts": [{"text": f"{system_prompt}\n\nUser Question: {prompt}"}]}],
+                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 800},
+            }
+            try:
+                res = await client.post(url, json=payload)
+                data = res.json()
+                if res.status_code == 200:
+                    CACHED_WORKING_MODEL = model_name
+                    candidates = data.get("candidates", [])
+                    if candidates and "content" in candidates[0]:
+                        parts = candidates[0]["content"].get("parts", [])
+                        if parts and "text" in parts[0]:
+                            return parts[0]["text"]
+            except Exception:
+                continue
 
     return f"⚠️ **AI Service Notice:** {last_error}"
 
@@ -266,6 +324,5 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 async def chat_endpoint(payload: ChatRequest):
-    # Always returns HTTP 200 with text explanation (never crashes with 500)
     reply_text = await generate_gemini_reply(payload.message)
     return {"reply": reply_text}
