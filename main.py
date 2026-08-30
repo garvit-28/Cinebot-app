@@ -1,10 +1,8 @@
 import os
 import httpx
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from google import genai
-from google.genai import types
 
 # =============================
 # ENVIRONMENT & CONFIG
@@ -14,9 +12,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not TMDB_API_KEY:
     raise ValueError("TMDB_API_KEY environment variable is required.")
-
-# Initialize Gemini Client if key exists
-client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 app = FastAPI(title="CineBot Recommendation & Film Backend")
 
@@ -96,6 +91,56 @@ async def fetch_watch_providers(tmdb_id: int, original_language: str = None, ori
         "rent": extract(region.get("rent", [])),
         "buy": extract(region.get("buy", [])),
     }
+
+
+# =============================
+# GEMINI GENERATION ENGINE
+# =============================
+async def generate_gemini_reply(prompt: str) -> str:
+    key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not key:
+        return "⚠️ **Configuration Error**: `GEMINI_API_KEY` is not set in Render environment variables."
+
+    system_prompt = (
+        "You are CineBot, an expert cinema AI assistant. Provide concise, enthusiastic, "
+        "and accurate film recommendations, where-to-watch streaming guides, cast info, and plot breakdowns."
+    )
+
+    # 1. Primary Strategy: Direct REST API (Works across all environments without SDK conflicts)
+    models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
+    last_error = ""
+
+    for model_name in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+        payload = {
+            "contents": [{"parts": [{"text": f"{system_prompt}\n\nUser Question: {prompt}"}]}],
+            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 800}
+        }
+        try:
+            async with httpx.AsyncClient(timeout=25.0) as client:
+                res = await client.post(url, json=payload)
+                data = res.json()
+
+                if res.status_code == 200:
+                    candidates = data.get("candidates", [])
+                    if candidates and "content" in candidates[0]:
+                        parts = candidates[0]["content"].get("parts", [])
+                        if parts and "text" in parts[0]:
+                            return parts[0]["text"]
+
+                error_obj = data.get("error", {})
+                last_error = error_obj.get("message", f"HTTP {res.status_code}")
+                
+                if "RESOURCE_EXHAUSTED" in last_error or "quota" in last_error.lower():
+                    return "⚠️ **Gemini Free Quota Limit Reached**: Your API key has temporarily exceeded its rate/token limit. Please wait 60 seconds or generate a fresh key on [Google AI Studio](https://aistudio.google.com/)."
+                if "API_KEY_INVALID" in last_error or "unregistered" in last_error.lower():
+                    return "⚠️ **Invalid Gemini Key**: The `GEMINI_API_KEY` provided is invalid. Please verify it in your Render settings."
+
+        except Exception as ex:
+            last_error = str(ex)
+            continue
+
+    return f"⚠️ **AI Service Notice:** {last_error}"
 
 
 # =============================
@@ -221,44 +266,6 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 async def chat_endpoint(payload: ChatRequest):
-    if not client:
-        return {
-            "reply": "⚠️ **API Key Missing**: `GEMINI_API_KEY` is not configured in the backend environment variables."
-        }
-
-    sys_instruction = (
-        "You are CineBot, an expert cinema AI assistant. Provide concise, enthusiastic, "
-        "and accurate film recommendations, where-to-watch streaming guides, cast info, and plot breakdowns."
-    )
-
-    # Robust model priority pipeline
-    models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]
-    last_error = ""
-
-    for model_name in models_to_try:
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=payload.message,
-                config=types.GenerateContentConfig(
-                    system_instruction=sys_instruction,
-                    temperature=0.7,
-                ),
-            )
-            return {"reply": response.text}
-        except Exception as e:
-            last_error = str(e)
-            print(f"Failed on {model_name}: {last_error}")
-            continue
-
-    # Return a friendly message instead of a 500 crash
-    if "429" in last_error or "RESOURCE_EXHAUSTED" in last_error:
-        return {
-            "reply": "⚠️ **Daily Quota Exhausted**: Your Google Gemini API key has exceeded its free rate limit (15 req/min or daily limit). Please create a new key on [Google AI Studio](https://aistudio.google.com/) and update Render."
-        }
-    elif "API_KEY" in last_error or "PERMISSION_DENIED" in last_error:
-        return {
-            "reply": "⚠️ **Invalid API Key**: Please verify `GEMINI_API_KEY` in your environment variables on Render."
-        }
-
-    return {"reply": f"⚠️ **Gemini API Notice:** {last_error}"}
+    # Always returns HTTP 200 with text explanation (never crashes with 500)
+    reply_text = await generate_gemini_reply(payload.message)
+    return {"reply": reply_text}
