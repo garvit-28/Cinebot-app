@@ -28,7 +28,7 @@ TMDB_IMG = "https://image.tmdb.org/t/p/w780"
 TMDB_LOGO_BASE = "https://image.tmdb.org/t/p/w154"
 INDIAN_LANGUAGES = {"hi", "ta", "te", "ml", "kn", "bn", "mr", "pa", "gu"}
 
-# In-memory cache for the validated working model
+# In-memory cache for validated working Gemini model
 CACHED_WORKING_MODEL = None
 
 
@@ -52,11 +52,39 @@ def img(path: str):
 async def fetch_trailer_key(tmdb_id: int):
     if not tmdb_id:
         return None
+
     data = await tmdb_get(f"/movie/{tmdb_id}/videos")
-    for v in data.get("results", []):
-        if v.get("site") == "YouTube" and v.get("type") in ["Trailer", "Teaser"]:
+    results = data.get("results", [])
+    if not results:
+        return None
+
+    youtube_videos = [v for v in results if v.get("site") == "YouTube"]
+
+    def is_valid_trailer(v):
+        name = v.get("name", "").lower()
+        if any(bad in name for bad in ["#shorts", "short", "shorts", "reel", "tiktok"]):
+            return False
+        return True
+
+    clean_videos = [v for v in youtube_videos if is_valid_trailer(v)] or youtube_videos
+
+    # Priority 1: Official Main Trailers
+    for v in clean_videos:
+        if v.get("type") == "Trailer" and v.get("official") is True:
             return v.get("key")
-    return None
+
+    # Priority 2: Any Full Trailer
+    for v in clean_videos:
+        if v.get("type") == "Trailer":
+            return v.get("key")
+
+    # Priority 3: Official Teasers
+    for v in clean_videos:
+        if v.get("type") == "Teaser" and v.get("official") is True:
+            return v.get("key")
+
+    # Priority 4: Fallback to the first available clip
+    return clean_videos[0].get("key") if clean_videos else None
 
 
 async def fetch_watch_providers(tmdb_id: int, original_language: str = None, origin_country: list = None):
@@ -100,7 +128,6 @@ async def fetch_watch_providers(tmdb_id: int, original_language: str = None, ori
 # AUTO-DISCOVERY GEMINI ENGINE
 # =============================
 async def get_available_gemini_models(api_key: str) -> list:
-    """Queries Google ListModels API to find active models supported by this key."""
     list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -130,21 +157,16 @@ async def generate_gemini_reply(prompt: str) -> str:
         "and accurate film recommendations, where-to-watch streaming guides, cast info, and plot breakdowns."
     )
 
-    # 1. Use cached model if already discovered
     candidate_models = []
     if CACHED_WORKING_MODEL:
         candidate_models.append(CACHED_WORKING_MODEL)
 
-    # 2. Add standard known models
     candidate_models.extend(["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"])
-
-    # Remove duplicates while preserving order
     candidate_models = list(dict.fromkeys(candidate_models))
 
     last_error = ""
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        # First attempt: Try candidate models
         for model_name in candidate_models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
             payload = {
@@ -167,7 +189,7 @@ async def generate_gemini_reply(prompt: str) -> str:
                 last_error = error_obj.get("message", f"HTTP {res.status_code}")
 
                 if "RESOURCE_EXHAUSTED" in last_error or "quota" in last_error.lower():
-                    return "⚠️ **Gemini Rate Limit Reached**: Your API key has temporarily reached its rate limit. Please wait 30 seconds or create a new key on [Google AI Studio](https://aistudio.google.com/)."
+                    return "⚠️ **Gemini Rate Limit Reached**: Your API key has temporarily reached its quota limit. Please wait 30 seconds or generate a fresh key on [Google AI Studio](https://aistudio.google.com/)."
                 if "API_KEY_INVALID" in last_error or "unregistered" in last_error.lower():
                     return "⚠️ **Invalid Gemini Key**: The `GEMINI_API_KEY` provided is invalid. Please verify it in your Render settings."
 
@@ -175,7 +197,6 @@ async def generate_gemini_reply(prompt: str) -> str:
                 last_error = str(ex)
                 continue
 
-        # Second attempt: Query ListModels dynamically to find active models
         discovered_models = await get_available_gemini_models(key)
         for model_name in discovered_models:
             if model_name in candidate_models:
