@@ -107,7 +107,7 @@ async def generate_gemini_reply(prompt: str) -> str:
     )
 
     # 1. Primary Strategy: Direct REST API (Works across all environments without SDK conflicts)
-    models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
+    models_to_try = ["gemini-3.6-flash", "gemini-3.6-lite", "gemini-2.0-flash"]
     last_error = ""
 
     for model_name in models_to_try:
