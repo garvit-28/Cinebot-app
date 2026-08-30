@@ -17,59 +17,122 @@ st.set_page_config(
 )
 
 # =============================
-# RESPONSIVE CSS INJECTION
+# THEME-ADAPTIVE CINEMATIC CSS
 # =============================
 st.markdown(
     """
     <style>
-    /* Global Container Adjustments */
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Bebas+Neue&display=swap');
+
+    /* Global Base */
     .main .block-container {
-        padding-top: 2rem !important;
-        padding-bottom: 2rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding-top: 1.5rem !important;
+        padding-bottom: 3rem !important;
+        padding-left: 1.2rem !important;
+        padding-right: 1.2rem !important;
         max-width: 1400px;
     }
-    
-    h1 {
-        font-size: clamp(1.5rem, 4vw, 2.3rem) !important;
-        margin-bottom: 0.5rem !important;
-    }
-    
-    h2, h3 {
-        font-size: clamp(1.2rem, 3vw, 1.8rem) !important;
+
+    /* Adaptive Hero Banner */
+    .hero-banner {
+        background: radial-gradient(circle at 50% 0%, rgba(229, 9, 20, 0.12) 0%, rgba(0, 0, 0, 0) 75%),
+                    var(--secondary-background-color);
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        border-radius: 16px;
+        padding: 2rem 1.5rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.15);
     }
 
-    /* Card Title Styling */
+    .hero-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        padding: 4px 14px;
+        border-radius: 9999px;
+        background: rgba(229, 9, 20, 0.12);
+        color: #e50914;
+        border: 1px solid rgba(229, 9, 20, 0.3);
+        margin-bottom: 0.8rem;
+    }
+
+    .hero-title {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: clamp(2.6rem, 6.5vw, 4.2rem);
+        letter-spacing: 2px;
+        line-height: 1;
+        margin: 0;
+        background: linear-gradient(135deg, #e50914 0%, #f59e0b 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: clamp(0.9rem, 2vw, 1.05rem);
+        opacity: 0.75;
+        font-weight: 500;
+        max-width: 620px;
+        margin: 0.6rem auto 0 auto;
+        line-height: 1.5;
+    }
+
+    /* Card Glow and Hover Mechanics */
+    [data-testid="stImage"] img {
+        border-radius: 12px;
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), 
+                    box-shadow 0.3s ease, 
+                    border-color 0.3s ease;
+    }
+    [data-testid="stImage"] img:hover {
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 12px 24px rgba(229, 9, 20, 0.25);
+        border-color: #e50914;
+    }
+
+    /* Movie Title & Badges */
     .movie-title { 
-        font-size: 0.9rem; 
-        line-height: 1.2rem; 
-        height: 2.4rem; 
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 0.95rem; 
+        line-height: 1.3rem; 
+        height: 2.6rem; 
         overflow: hidden; 
-        font-weight: 600; 
-        margin-top: 6px; 
-        text-overflow: ellipsis;
+        font-weight: 700; 
+        margin-top: 8px; 
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
     }
 
     .rating-badge { 
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
         font-size: 0.8rem; 
-        font-weight: 600; 
-        color: #f59e0b; 
-        margin-top: 2px; 
-        margin-bottom: 6px; 
+        font-weight: 700; 
+        color: #d97706;
+        background: rgba(245, 158, 11, 0.12);
+        padding: 2px 8px;
+        border-radius: 6px;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        margin: 4px 0 8px 0;
     }
 
-    /* Video Embed Responsive Wrapper */
+    /* Video Player Frame */
     .video-container {
         position: relative;
-        padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+        padding-bottom: 56.25%;
         height: 0;
         overflow: hidden;
-        max-width: 100%;
-        border-radius: 8px;
+        border-radius: 12px;
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
     }
     .video-container iframe {
         position: absolute;
@@ -80,26 +143,27 @@ st.markdown(
         border: 0;
     }
 
-    /* Mobile-Specific Breakpoints */
+    /* Mobile Adaptations */
     @media (max-width: 768px) {
-        .main .block-container {
-            padding-top: 1rem !important;
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
+        .hero-banner {
+            padding: 1.4rem 1rem;
         }
-        
-        /* Auto-wrap Streamlit columns on small screens if crammed */
         [data-testid="column"] {
-            min-width: 140px !important;
+            min-width: 145px !important;
             flex: 1 1 45% !important;
             margin-bottom: 1rem !important;
         }
     }
     </style>
+
+    <div class="hero-banner">
+        <div class="hero-pill">⚡ Powered by Gemini AI & TMDB</div>
+        <h1 class="hero-title">🎬 CINEBOT</h1>
+        <p class="hero-subtitle">Intelligent Film Discovery, Semantic Search & Instant Streaming Guides</p>
+    </div>
     """,
     unsafe_allow_html=True,
 )
-
 
 # =============================
 # UTILITIES
