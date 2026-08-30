@@ -65,7 +65,6 @@ async def fetch_trailer_key(tmdb_id: int):
     """Fetches YouTube trailer key across all languages (Hindi, English, etc.)."""
     if not tmdb_id or tmdb_id <= 0:
         return None
-    # No language filter applied to ensure Indian & regional trailers are included
     data = await tmdb_get(f"/movie/{tmdb_id}/videos")
     results = data.get("results", [])
 
@@ -246,8 +245,7 @@ async def chat_with_bot(req: ChatRequest):
         "and give tailored suggestions based on their mood or preferences. Format responses cleanly with markdown."
     )
 
-    # Primary model: gemini-3.6-flash; Fallback model: gemini-3.5-flash-lite
-    models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.5", "gemini-3.6"]
+    models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash-lite"]
     last_error = None
 
     for model_name in models_to_try:
