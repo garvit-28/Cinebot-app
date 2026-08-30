@@ -16,7 +16,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-
 # =============================
 # THEME-ADAPTIVE CINEMA CSS
 # =============================
@@ -34,7 +33,7 @@ st.markdown(
         max-width: 1400px;
     }
 
-    /* Hero Banner: Adapts seamlessly to Light & Dark Modes */
+    /* Hero Banner */
     .hero-banner {
         background: radial-gradient(circle at 50% 0%, rgba(229, 9, 20, 0.12) 0%, transparent 75%),
                     var(--secondary-background-color);
@@ -42,7 +41,7 @@ st.markdown(
         border-radius: 16px;
         padding: 2rem 1.2rem;
         text-align: center;
-        margin-bottom: 2rem;
+        margin-bottom: 1.8rem;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     }
 
@@ -154,6 +153,21 @@ st.markdown(
         border: 0;
     }
 
+    /* Styled Chat Bubbles */
+    [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
+        background: rgba(229, 9, 20, 0.05) !important;
+        border: 1px solid rgba(229, 9, 20, 0.25) !important;
+        border-radius: 14px !important;
+        padding: 12px 16px !important;
+    }
+
+    [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+        background: rgba(245, 158, 11, 0.05) !important;
+        border: 1px solid rgba(245, 158, 11, 0.25) !important;
+        border-radius: 14px !important;
+        padding: 12px 16px !important;
+    }
+
     /* Mobile Adaptations */
     @media (max-width: 768px) {
         .main .block-container {
@@ -187,6 +201,46 @@ def render_image(image_url):
         st.image(image_url, use_container_width=True)
     except TypeError:
         st.image(image_url, use_column_width=True)
+
+
+def format_provider_badges(providers_list):
+    """Renders color-coded streaming platform badges."""
+    if not providers_list:
+        return "<span style='opacity: 0.65; font-size: 0.85rem;'>Check local rights on Netflix, Prime Video, or Hotstar.</span>"
+
+    brand_colors = {
+        "Netflix": "#E50914",
+        "Amazon Prime Video": "#00A8E1",
+        "Amazon Video": "#00A8E1",
+        "Disney Plus": "#113CCF",
+        "Hotstar": "#113CCF",
+        "Apple TV": "#1C1C1E",
+        "Apple TV Plus": "#1C1C1E",
+        "JioCinema": "#E11D48",
+        "Zee5": "#8230C6",
+        "Sony Liv": "#0085FF",
+        "YouTube": "#FF0000",
+        "Google Play Movies": "#01875F",
+    }
+
+    badges = []
+    for name in providers_list:
+        bg_color = brand_colors.get(name, "#334155")
+        badges.append(
+            f"""<span style="
+                display: inline-block;
+                background-color: {bg_color};
+                color: #ffffff;
+                font-weight: 700;
+                font-size: 0.76rem;
+                padding: 4px 10px;
+                border-radius: 6px;
+                margin-right: 6px;
+                margin-bottom: 6px;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+            ">📺 {name}</span>"""
+        )
+    return "".join(badges)
 
 
 # =============================
@@ -313,7 +367,6 @@ with st.sidebar:
         "⏳ Upcoming": "upcoming",
     }
     
-    # Attractive Category Selector (falls back gracefully if pills not supported)
     try:
         chosen_cat_label = st.pills(
             "Select Feed",
@@ -334,7 +387,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("#### 📐 **Poster Density**")
     
-    # Segmented Desktop Density Picker
     try:
         grid_cols = st.segmented_control(
             "Desktop Columns",
@@ -361,6 +413,21 @@ if st.session_state.view == "home":
         "🔍 Search any movie (e.g. Inception, Avatar, 3 Idiots):",
         placeholder="Type movie name and press Enter...",
     )
+
+    # Mood Quick-Search Chips
+    st.markdown("<p style='font-size: 0.85rem; font-weight: 600; margin: 6px 0 4px 0; opacity: 0.8;'>🎭 Explore by vibe:</p>", unsafe_allow_html=True)
+    vibe_cols = st.columns(4)
+    vibes = [
+        ("🧠 Mind-Bending", "Inception"),
+        ("🚀 Space Sci-Fi", "Interstellar"),
+        ("😂 Laugh Out Loud", "3 Idiots"),
+        ("🔥 High Octane", "Mad Max Fury Road"),
+    ]
+    for col, (label, movie_target) in zip(vibe_cols, vibes):
+        with col:
+            if st.button(label, key=f"vibe_{label}", use_container_width=True):
+                set_movie_details(movie_target)
+                st.rerun()
 
     if search_query:
         bundle, _ = api_get_json("/movie/search", {"query": search_query, "tfidf_top_n": 10})
@@ -402,6 +469,7 @@ if st.session_state.view == "home":
             st.warning(f"No results found for '{search_query}'.")
 
     else:
+        st.markdown("---")
         st.subheader(f"{chosen_cat_label} Movies")
         data, err = api_get_json("/home", {"category": category})
         if data:
@@ -451,20 +519,55 @@ elif st.session_state.view == "details":
     data, _ = api_get_json("/movie/detail", {"title": selected_title, "tmdb_id": selected_tmdb_id})
     movie_title = data.get("title", selected_title) if data else selected_title
 
-    # Adaptive 2-column layout (stacks cleanly on phones)
+    poster = data.get("poster_url") if data else None
+    if not poster or not str(poster).startswith("http"):
+        clean = urllib.parse.quote(f"{movie_title} movie poster")
+        poster = f"https://tse2.mm.bing.net/th?q={clean}&w=500&h=750&c=7&rs=1&p=0"
+
+    # Frosted Glass Hero Banner
+    st.markdown(
+        f"""
+        <div style="
+            position: relative;
+            height: clamp(140px, 25vw, 200px);
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(128, 128, 128, 0.2);
+            background: #000;
+        ">
+            <div style="
+                position: absolute;
+                inset: -20px;
+                background-image: url('{poster}');
+                background-size: cover;
+                background-position: center;
+                filter: blur(25px) brightness(0.45);
+            "></div>
+            <div style="
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                padding-left: 2rem;
+                background: linear-gradient(90deg, rgba(0,0,0,0.85) 0%, transparent 100%);
+            ">
+                <h1 style="color: #ffffff; margin: 0; font-size: clamp(1.6rem, 4vw, 2.5rem); font-weight: 800;">{movie_title}</h1>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # 2-Column Split
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        poster = data.get("poster_url") if data else None
-        if not poster or not str(poster).startswith("http"):
-            clean = urllib.parse.quote(f"{movie_title} movie poster")
-            poster = f"https://tse2.mm.bing.net/th?q={clean}&w=500&h=750&c=7&rs=1&p=0"
         render_image(poster)
 
     with col2:
-        st.header(movie_title)
         if data and data.get("rating"):
-            st.markdown(f"⭐ **Rating:** `{round(float(data['rating']), 1)} / 10`")
+            st.markdown(f"<div class='rating-badge'>⭐ {round(float(data['rating']), 1)} / 10</div>", unsafe_allow_html=True)
         st.write(data.get("overview", "No overview available.") if data else "")
 
         providers = data.get("providers", {}) if data else {}
@@ -473,11 +576,11 @@ elif st.session_state.view == "details":
 
         st.markdown("#### 📺 Where to Watch")
         if stream:
-            st.success(f"**Stream On:** {', '.join(stream)}")
+            st.markdown(f"**Stream:**<br>{format_provider_badges(stream)}", unsafe_allow_html=True)
         if rent_buy:
-            st.info(f"**Rent / Buy:** {', '.join(rent_buy)}")
+            st.markdown(f"**Rent / Buy:**<br>{format_provider_badges(rent_buy)}", unsafe_allow_html=True)
         if not stream and not rent_buy:
-            st.caption("Check JustWatch, Netflix, Disney+ Hotstar, or Prime Video for local rights.")
+            st.markdown(format_provider_badges([]), unsafe_allow_html=True)
 
     # Responsive YouTube Player
     st.write("")
