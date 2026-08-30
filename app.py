@@ -315,17 +315,16 @@ elif st.session_state.view == "details":
         if not stream and not rent_buy:
             st.caption("Check JustWatch, Netflix, Disney+ Hotstar, or Prime Video for regional licenses.")
 
-    # Official Trailer Player Section
+    # In-Page Official Trailer Player (Zero Redirection)
     st.write("")
     st.markdown("#### 🎬 Official Trailer")
     trailer_key = data.get("trailer_key") if data else None
 
     if trailer_key:
-        st.video(f"https://www.youtube.com/watch?v={trailer_key}")
+        embed_url = f"https://www.youtube-nocookie.com/embed/{trailer_key}?rel=0&modestbranding=1"
+        st.components.v1.iframe(src=embed_url, height=450, scrolling=False)
     else:
-        trailer_query = urllib.parse.quote(f"{movie_title} official trailer")
-        yt_url = f"https://www.youtube.com/results?search_query={trailer_query}"
-        st.link_button("▶️ Search Trailer on YouTube", yt_url, use_container_width=True)
+        st.info("Trailer is currently not available for this title.")
 
     st.divider()
     st.subheader(f"🎯 More Movies Similar to '{movie_title}'")

@@ -8,4 +8,4 @@ scipy==1.13.1
 scikit-learn==1.5.1
 streamlit==1.36.0
 requests
-pillow==10.3.0
+pillow==10.3.0google-generativeai

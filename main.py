@@ -68,15 +68,17 @@ async def fetch_trailer_key(tmdb_id: int):
     data = await tmdb_get(f"/movie/{tmdb_id}/videos", {"language": "en-US"})
     results = data.get("results", [])
 
-    # Priority: Official Trailer -> Trailer -> Any YouTube clip
+    # Priority 1: Official Trailer
     for v in results:
         if v.get("site") == "YouTube" and v.get("type") == "Trailer" and v.get("official") is True:
             return v.get("key")
+    # Priority 2: Any Trailer
     for v in results:
         if v.get("site") == "YouTube" and v.get("type") == "Trailer":
             return v.get("key")
+    # Priority 3: Any YouTube Video/Teaser/Clip
     for v in results:
-        if v.get("site") == "YouTube":
+        if v.get("site") == "YouTube" and v.get("key"):
             return v.get("key")
     return None
 
