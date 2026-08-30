@@ -10,139 +10,144 @@ API_BASE = st.secrets.get("API_BASE", os.getenv("API_BASE", "http://127.0.0.1:80
 TMDB_IMG = "https://image.tmdb.org/t/p/w780"
 
 st.set_page_config(
-    page_title="CineBot - Movie Recommender System",
+    page_title="CineBot - Next-Gen Film Discovery",
     page_icon="🎬",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
 # =============================
-# THEME-ADAPTIVE CINEMA CSS
+# ULTRA-MODERN ADAPTIVE CSS
 # =============================
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Bebas+Neue&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Bebas+Neue&display=swap');
 
-    /* Global Container */
+    /* Global Viewport Reset */
     .main .block-container {
-        padding-top: 1.5rem !important;
-        padding-bottom: 3rem !important;
+        padding-top: 1.2rem !important;
+        padding-bottom: 3.5rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
         max-width: 1400px;
     }
 
-    /* Hero Banner */
+    /* Ambient Hero Header */
     .hero-banner {
-        background: radial-gradient(circle at 50% 0%, rgba(229, 9, 20, 0.12) 0%, transparent 75%),
+        background: radial-gradient(circle at 50% 0%, rgba(229, 9, 20, 0.14) 0%, transparent 70%),
                     var(--secondary-background-color);
-        border: 1px solid rgba(128, 128, 128, 0.2);
-        border-radius: 16px;
-        padding: 2rem 1.2rem;
+        border: 1px solid rgba(128, 128, 128, 0.22);
+        border-radius: 18px;
+        padding: 2.2rem 1.4rem;
         text-align: center;
-        margin-bottom: 1.8rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.12);
+        backdrop-filter: blur(12px);
     }
 
     .hero-pill {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 1.5px;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 1.6px;
         text-transform: uppercase;
-        padding: 4px 12px;
+        padding: 5px 14px;
         border-radius: 9999px;
         background: rgba(229, 9, 20, 0.12);
         color: #e50914;
-        border: 1px solid rgba(229, 9, 20, 0.3);
-        margin-bottom: 0.6rem;
+        border: 1px solid rgba(229, 9, 20, 0.35);
+        margin-bottom: 0.8rem;
     }
 
     .hero-title {
         font-family: 'Bebas Neue', sans-serif;
-        font-size: clamp(2.4rem, 6vw, 3.8rem);
-        letter-spacing: 1.5px;
-        line-height: 1.1;
+        font-size: clamp(2.6rem, 6.5vw, 4.2rem);
+        letter-spacing: 2px;
+        line-height: 1;
         margin: 0;
-        background: linear-gradient(135deg, #e50914 0%, #f59e0b 100%);
+        background: linear-gradient(135deg, #e50914 0%, #f59e0b 60%, #ec4899 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
 
     .hero-subtitle {
         font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: clamp(0.85rem, 1.8vw, 1rem);
+        font-size: clamp(0.85rem, 1.8vw, 1.05rem);
         color: var(--text-color);
-        opacity: 0.75;
+        opacity: 0.8;
         font-weight: 500;
-        max-width: 600px;
-        margin: 0.5rem auto 0 auto;
-        line-height: 1.4;
+        max-width: 620px;
+        margin: 0.6rem auto 0 auto;
+        line-height: 1.5;
     }
 
-    /* Poster Card Hover Effects */
+    /* Cinematic Poster Cards */
     [data-testid="stImage"] img {
-        border-radius: 10px;
-        border: 1px solid rgba(128, 128, 128, 0.2);
-        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        border-radius: 12px;
+        border: 1px solid rgba(128, 128, 128, 0.18);
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), 
+                    box-shadow 0.3s ease, 
+                    border-color 0.3s ease;
     }
     [data-testid="stImage"] img:hover {
-        transform: translateY(-5px) scale(1.02);
-        box-shadow: 0 10px 25px rgba(229, 9, 20, 0.25);
+        transform: translateY(-6px) scale(1.02);
+        box-shadow: 0 14px 28px rgba(229, 9, 20, 0.22), 0 0 15px rgba(245, 158, 11, 0.12);
         border-color: #e50914;
     }
 
-    /* Movie Title */
+    /* Movie Card Titles */
     .movie-title { 
         font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: 0.9rem; 
-        line-height: 1.25rem; 
-        height: 2.5rem; 
+        font-size: 0.92rem; 
+        line-height: 1.3rem; 
+        height: 2.6rem; 
         overflow: hidden; 
         font-weight: 700; 
         color: var(--text-color);
-        margin-top: 6px; 
+        margin-top: 8px; 
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
     }
 
-    /* Rating Badge */
+    /* Golden Rating Pill */
     .rating-badge { 
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        font-size: 0.78rem; 
-        font-weight: 700; 
+        gap: 5px;
+        font-size: 0.8rem; 
+        font-weight: 800; 
         color: #d97706;
-        background: rgba(245, 158, 11, 0.12);
-        padding: 2px 7px;
+        background: rgba(245, 158, 11, 0.14);
+        padding: 3px 8px;
         border-radius: 6px;
-        border: 1px solid rgba(245, 158, 11, 0.3);
-        margin: 3px 0 6px 0;
+        border: 1px solid rgba(245, 158, 11, 0.35);
+        margin: 4px 0 8px 0;
     }
 
-    /* Active Segmented Control & Radio Styling */
+    /* Active UI Segment Controls */
     div[data-testid="stSegmentedControl"] button[aria-checked="true"],
     div[data-testid="stPills"] button[aria-checked="true"] {
         background: linear-gradient(135deg, #e50914 0%, #b80710 100%) !important;
         color: #ffffff !important;
         border-color: #e50914 !important;
-        box-shadow: 0 4px 12px rgba(229, 9, 20, 0.35) !important;
+        box-shadow: 0 4px 14px rgba(229, 9, 20, 0.35) !important;
+        font-weight: 700 !important;
     }
 
-    /* Responsive YouTube Player */
+    /* Cinema Video Frame */
     .video-container {
         position: relative;
         padding-bottom: 56.25%;
         height: 0;
         overflow: hidden;
-        border-radius: 12px;
+        border-radius: 14px;
         border: 1px solid rgba(128, 128, 128, 0.2);
         background: #000;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
     }
     .video-container iframe {
         position: absolute;
@@ -153,19 +158,19 @@ st.markdown(
         border: 0;
     }
 
-    /* Styled Chat Bubbles */
+    /* High-Tech AI Chatbot Messages */
     [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
         background: rgba(229, 9, 20, 0.05) !important;
         border: 1px solid rgba(229, 9, 20, 0.25) !important;
         border-radius: 14px !important;
-        padding: 12px 16px !important;
+        padding: 14px 18px !important;
     }
 
     [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
         background: rgba(245, 158, 11, 0.05) !important;
         border: 1px solid rgba(245, 158, 11, 0.25) !important;
         border-radius: 14px !important;
-        padding: 12px 16px !important;
+        padding: 14px 18px !important;
     }
 
     /* Mobile Adaptations */
@@ -193,7 +198,7 @@ st.markdown(
 
 
 # =============================
-# UTILITIES
+# UTILITIES & LOGO RENDERER
 # =============================
 def render_image(image_url):
     """Safely render images responsively across Streamlit versions."""
@@ -204,43 +209,71 @@ def render_image(image_url):
 
 
 def format_provider_badges(providers_list):
-    """Renders color-coded streaming platform badges."""
+    """Renders real streaming platform logos with flexible fuzzy brand matching."""
     if not providers_list:
-        return "<span style='opacity: 0.65; font-size: 0.85rem;'>Check local rights on Netflix, Prime Video, or Hotstar.</span>"
+        return "<div style='opacity: 0.7; font-size: 0.86rem; padding: 4px 0;'>Check local rights on Netflix, Prime Video, Disney+ Hotstar, or JioCinema.</div>"
 
-    brand_colors = {
-        "Netflix": "#E50914",
-        "Amazon Prime Video": "#00A8E1",
-        "Amazon Video": "#00A8E1",
-        "Disney Plus": "#113CCF",
-        "Hotstar": "#113CCF",
-        "Apple TV": "#1C1C1E",
-        "Apple TV Plus": "#1C1C1E",
-        "JioCinema": "#E11D48",
-        "Zee5": "#8230C6",
-        "Sony Liv": "#0085FF",
-        "YouTube": "#FF0000",
-        "Google Play Movies": "#01875F",
-    }
+    brand_rules = [
+        {"keywords": ["netflix"], "icon": "https://cdn.simpleicons.org/netflix/white", "bg": "#E50914"},
+        {"keywords": ["prime video", "amazon prime"], "icon": "https://cdn.simpleicons.org/primevideo/white", "bg": "#00A8E1"},
+        {"keywords": ["amazon video", "amazon"], "icon": "https://cdn.simpleicons.org/amazon/white", "bg": "#FF9900"},
+        {"keywords": ["disney", "hotstar"], "icon": "https://cdn.simpleicons.org/disneyplus/white", "bg": "#113CCF"},
+        {"keywords": ["apple tv", "apple tv plus", "itunes"], "icon": "https://cdn.simpleicons.org/appletv/white", "bg": "#1C1C1E"},
+        {"keywords": ["jiocinema", "jio cinema", "jio"], "icon": "https://cdn.simpleicons.org/airplayvideo/white", "bg": "#E11D48"},
+        {"keywords": ["youtube"], "icon": "https://cdn.simpleicons.org/youtube/white", "bg": "#FF0000"},
+        {"keywords": ["google play"], "icon": "https://cdn.simpleicons.org/googleplay/white", "bg": "#01875F"},
+        {"keywords": ["hulu"], "icon": "https://cdn.simpleicons.org/hulu/white", "bg": "#1CE783"},
+        {"keywords": ["max", "hbo"], "icon": "https://cdn.simpleicons.org/max/white", "bg": "#002BE7"},
+        {"keywords": ["zee5", "zee"], "icon": "https://cdn.simpleicons.org/zdf/white", "bg": "#8230C6"},
+        {"keywords": ["sony", "sonyliv", "sony liv"], "icon": "https://cdn.simpleicons.org/sony/white", "bg": "#0085FF"},
+    ]
 
     badges = []
-    for name in providers_list:
-        bg_color = brand_colors.get(name, "#334155")
-        badges.append(
-            f"""<span style="
-                display: inline-block;
-                background-color: {bg_color};
-                color: #ffffff;
-                font-weight: 700;
-                font-size: 0.76rem;
-                padding: 4px 10px;
-                border-radius: 6px;
-                margin-right: 6px;
-                margin-bottom: 6px;
-                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-            ">📺 {name}</span>"""
-        )
-    return "".join(badges)
+    for raw_name in providers_list:
+        raw_clean = str(raw_name).lower().strip()
+        matched = False
+
+        for rule in brand_rules:
+            if any(k in raw_clean for k in rule["keywords"]):
+                icon_tag = f'<img src="{rule["icon"]}" width="15" height="15" style="vertical-align: middle; margin-right: 7px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));" />'
+                badges.append(
+                    f"""<span style="
+                        display: inline-flex;
+                        align-items: center;
+                        background-color: {rule['bg']};
+                        color: #ffffff;
+                        font-weight: 700;
+                        font-size: 0.78rem;
+                        padding: 6px 12px;
+                        border-radius: 8px;
+                        margin-right: 8px;
+                        margin-bottom: 8px;
+                        letter-spacing: 0.2px;
+                        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+                    ">{icon_tag}{raw_name}</span>"""
+                )
+                matched = True
+                break
+
+        if not matched:
+            badges.append(
+                f"""<span style="
+                    display: inline-flex;
+                    align-items: center;
+                    background: linear-gradient(135deg, #334155, #1e293b);
+                    color: #ffffff;
+                    font-weight: 700;
+                    font-size: 0.78rem;
+                    padding: 6px 12px;
+                    border-radius: 8px;
+                    margin-right: 8px;
+                    margin-bottom: 8px;
+                    border: 1px solid rgba(255,255,255,0.1);
+                    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+                "><span style="margin-right: 5px;">📺</span>{raw_name}</span>"""
+            )
+
+    return f"<div style='display: flex; flex-wrap: wrap; align-items: center; margin-top: 4px;'>{''.join(badges)}</div>"
 
 
 # =============================
@@ -259,7 +292,7 @@ if "chat_messages" not in st.session_state:
     st.session_state.chat_messages = [
         {
             "role": "assistant",
-            "content": "Hi! I am **CineBot** powered by Gemini AI 🎬. Ask for recommendations, streaming availability, or plot breakdowns!",
+            "content": "Hi! I am **CineBot** powered by Gemini AI 🎬. Ask for recommendations, OTT availability, or deep plot breakdowns!",
         }
     ]
 
@@ -281,7 +314,7 @@ def goto_chat():
 
 
 # =============================
-# API UTILITIES
+# API HELPERS
 # =============================
 def api_get_json(path: str, params=None):
     try:
@@ -346,7 +379,7 @@ def poster_grid(cards, cols=4, key_prefix="grid"):
 
 
 # =============================
-# SIDEBAR
+# SIDEBAR NAVIGATION
 # =============================
 with st.sidebar:
     st.markdown("### 🎬 **Navigation**")
@@ -357,8 +390,8 @@ with st.sidebar:
         st.button("💬 AI Bot", on_click=goto_chat, use_container_width=True)
 
     st.markdown("---")
-    st.markdown("#### 🍿 **Browse Catalog**")
-    
+    st.markdown("#### 🍿 **Browse Feed**")
+
     category_map = {
         "🔥 Popular": "popular",
         "⚡ Trending Today": "trending",
@@ -366,17 +399,17 @@ with st.sidebar:
         "🎬 In Theaters": "now_playing",
         "⏳ Upcoming": "upcoming",
     }
-    
+
     try:
         chosen_cat_label = st.pills(
-            "Select Feed",
+            "Feed Selection",
             options=list(category_map.keys()),
             default="🔥 Popular",
             label_visibility="collapsed",
         ) or "🔥 Popular"
     except Exception:
         chosen_cat_label = st.selectbox(
-            "Select Feed",
+            "Feed Selection",
             options=list(category_map.keys()),
             index=0,
             label_visibility="collapsed",
@@ -385,19 +418,19 @@ with st.sidebar:
     category = category_map[chosen_cat_label]
 
     st.markdown("---")
-    st.markdown("#### 📐 **Poster Density**")
-    
+    st.markdown("#### 📐 **Display Density**")
+
     try:
         grid_cols = st.segmented_control(
-            "Desktop Columns",
+            "Desktop Grid Density",
             options=[2, 3, 4, 5],
             default=4,
             label_visibility="collapsed",
-            help="Choose how many movie cards display per row on desktop",
+            help="Number of posters displayed per row on wide screens",
         ) or 4
     except Exception:
         grid_cols = st.radio(
-            "Desktop Columns",
+            "Desktop Grid Density",
             options=[2, 3, 4, 5],
             index=2,
             horizontal=True,
@@ -410,18 +443,18 @@ with st.sidebar:
 # =============================
 if st.session_state.view == "home":
     search_query = st.text_input(
-        "🔍 Search any movie (e.g. Inception, Avatar, 3 Idiots):",
-        placeholder="Type movie name and press Enter...",
+        "🔍 Discover any movie:",
+        placeholder="Type a title like Inception, Oppenheimer, 3 Idiots, or Dune...",
     )
 
-    # Mood Quick-Search Chips
-    st.markdown("<p style='font-size: 0.85rem; font-weight: 600; margin: 6px 0 4px 0; opacity: 0.8;'>🎭 Explore by vibe:</p>", unsafe_allow_html=True)
+    # Mood Exploration Chips
+    st.markdown("<p style='font-size: 0.85rem; font-weight: 700; margin: 8px 0 4px 0; opacity: 0.85;'>🎭 Instant Vibe Search:</p>", unsafe_allow_html=True)
     vibe_cols = st.columns(4)
     vibes = [
         ("🧠 Mind-Bending", "Inception"),
         ("🚀 Space Sci-Fi", "Interstellar"),
-        ("😂 Laugh Out Loud", "3 Idiots"),
-        ("🔥 High Octane", "Mad Max Fury Road"),
+        ("😂 Feel-Good Comedy", "3 Idiots"),
+        ("🔥 Non-Stop Action", "Mad Max Fury Road"),
     ]
     for col, (label, movie_target) in zip(vibe_cols, vibes):
         with col:
@@ -434,9 +467,9 @@ if st.session_state.view == "home":
         similar_titles = bundle.get("recommendation_titles", []) if bundle else []
 
         if similar_titles:
-            dropdown_choices = [f"-- Similar movies to '{search_query}' --"] + similar_titles
+            dropdown_choices = [f"-- Related movies to '{search_query}' --"] + similar_titles
             picked_similar = st.selectbox(
-                f"🎯 Quick Jump to Similar Movies:",
+                f"🎯 Quick Jump to Recommendations:",
                 options=dropdown_choices,
                 index=0,
                 key="search_similar_dropdown",
@@ -483,19 +516,19 @@ if st.session_state.view == "home":
 # =============================
 elif st.session_state.view == "chatbot":
     st.subheader("💬 CineBot: AI Movie Assistant")
-    st.caption("Ask anything about films, actors, streaming platforms, or mood-based suggestions.")
+    st.caption("Ask for film recommendations, actor filmographies, streaming availability, or plot breakdowns.")
 
     for msg in st.session_state.chat_messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Ask CineBot (e.g. 'Best Hindi horror movies', 'Where to watch Inception')..."):
+    if prompt := st.chat_input("Ask CineBot (e.g. 'Best Hindi mystery thrillers', 'Where to watch Inception')..."):
         st.session_state.chat_messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("CineBot is thinking..."):
+            with st.spinner("CineBot is analyzing..."):
                 res, err = api_post_json("/chat", {"message": prompt})
                 if res and "reply" in res:
                     bot_reply = res["reply"]
@@ -524,17 +557,18 @@ elif st.session_state.view == "details":
         clean = urllib.parse.quote(f"{movie_title} movie poster")
         poster = f"https://tse2.mm.bing.net/th?q={clean}&w=500&h=750&c=7&rs=1&p=0"
 
-    # Frosted Glass Hero Banner
+    # Frosted-Glass Hero Header
     st.markdown(
         f"""
         <div style="
             position: relative;
-            height: clamp(140px, 25vw, 200px);
-            border-radius: 14px;
+            height: clamp(140px, 24vw, 190px);
+            border-radius: 16px;
             overflow: hidden;
             margin-bottom: 1.5rem;
-            border: 1px solid rgba(128, 128, 128, 0.2);
+            border: 1px solid rgba(128, 128, 128, 0.22);
             background: #000;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
         ">
             <div style="
                 position: absolute;
@@ -542,7 +576,7 @@ elif st.session_state.view == "details":
                 background-image: url('{poster}');
                 background-size: cover;
                 background-position: center;
-                filter: blur(25px) brightness(0.45);
+                filter: blur(28px) brightness(0.42);
             "></div>
             <div style="
                 position: absolute;
@@ -550,16 +584,16 @@ elif st.session_state.view == "details":
                 display: flex;
                 align-items: center;
                 padding-left: 2rem;
-                background: linear-gradient(90deg, rgba(0,0,0,0.85) 0%, transparent 100%);
+                background: linear-gradient(90deg, rgba(0,0,0,0.88) 0%, transparent 100%);
             ">
-                <h1 style="color: #ffffff; margin: 0; font-size: clamp(1.6rem, 4vw, 2.5rem); font-weight: 800;">{movie_title}</h1>
+                <h1 style="color: #ffffff; margin: 0; font-size: clamp(1.6rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -0.5px;">{movie_title}</h1>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # 2-Column Split
+    # 2-Column Responsive Split
     col1, col2 = st.columns([1, 2])
 
     with col1:
@@ -576,9 +610,9 @@ elif st.session_state.view == "details":
 
         st.markdown("#### 📺 Where to Watch")
         if stream:
-            st.markdown(f"**Stream:**<br>{format_provider_badges(stream)}", unsafe_allow_html=True)
+            st.markdown(f"**Stream Subscription:**{format_provider_badges(stream)}", unsafe_allow_html=True)
         if rent_buy:
-            st.markdown(f"**Rent / Buy:**<br>{format_provider_badges(rent_buy)}", unsafe_allow_html=True)
+            st.markdown(f"**Rent / Purchase:**{format_provider_badges(rent_buy)}", unsafe_allow_html=True)
         if not stream and not rent_buy:
             st.markdown(format_provider_badges([]), unsafe_allow_html=True)
 
