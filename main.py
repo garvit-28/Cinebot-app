@@ -228,7 +228,7 @@ async def chat_endpoint(payload: ChatRequest):
             "and accurate film recommendations, where-to-watch streaming guides, cast info, and plot breakdowns."
         )
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             contents=payload.message,
             config=types.GenerateContentConfig(
                 system_instruction=sys_instruction,
