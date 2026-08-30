@@ -238,11 +238,171 @@ with st.sidebar:
 # =============================
 # MAIN HEADER
 # =============================
+
+# =============================
+# CINEMATIC THEME & RESPONSIVE CSS
+# =============================
 st.markdown(
     """
-    <div style="padding: 0.5rem 0 1.2rem 0; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1rem;">
-        <h1 style="margin: 0; font-size: 1.8rem; font-weight: 700;">🎬 CineBot <span style="font-weight: 300; opacity: 0.7; font-size: 1.4rem;">| AI Movie Recommender</span></h1>
-        <p style="margin: 0.2rem 0 0 0; font-size: 0.9rem; opacity: 0.65;">Personalized movie recommendations, instant streaming guides & AI companion.</p>
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Bebas+Neue&display=swap');
+
+    /* Global Base */
+    .main .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 3rem !important;
+        padding-left: 1.2rem !important;
+        padding-right: 1.2rem !important;
+        max-width: 1400px;
+    }
+
+    /* Cinematic Hero Header */
+    .hero-banner {
+        background: radial-gradient(circle at 50% 0%, rgba(229, 9, 20, 0.18) 0%, rgba(15, 17, 23, 0) 75%),
+                    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 2.2rem 1.5rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+    }
+
+    .hero-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 1.8px;
+        text-transform: uppercase;
+        padding: 5px 14px;
+        border-radius: 9999px;
+        background: linear-gradient(90deg, rgba(229, 9, 20, 0.2), rgba(245, 158, 11, 0.2));
+        color: #fca5a5;
+        border: 1px solid rgba(229, 9, 20, 0.4);
+        margin-bottom: 0.8rem;
+    }
+
+    .hero-title {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: clamp(2.8rem, 7vw, 4.5rem);
+        letter-spacing: 2px;
+        line-height: 1;
+        margin: 0;
+        background: linear-gradient(135deg, #ffffff 30%, #e50914 80%, #f59e0b 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 10px 30px rgba(229, 9, 20, 0.35);
+    }
+
+    .hero-subtitle {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: clamp(0.9rem, 2vw, 1.1rem);
+        color: #94a3b8;
+        font-weight: 400;
+        max-width: 620px;
+        margin: 0.6rem auto 0 auto;
+        line-height: 1.5;
+    }
+
+    /* Card Glow and Hover Mechanics */
+    [data-testid="stImage"] img {
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), 
+                    box-shadow 0.35s ease, 
+                    border-color 0.35s ease;
+    }
+    [data-testid="stImage"] img:hover {
+        transform: translateY(-6px) scale(1.03);
+        box-shadow: 0 16px 32px rgba(229, 9, 20, 0.25), 0 0 15px rgba(245, 158, 11, 0.15);
+        border-color: rgba(229, 9, 20, 0.5);
+    }
+
+    /* Typography & Badges */
+    .movie-title { 
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 0.95rem; 
+        line-height: 1.3rem; 
+        height: 2.6rem; 
+        overflow: hidden; 
+        font-weight: 600; 
+        margin-top: 8px; 
+        color: #f1f5f9;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .rating-badge { 
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.8rem; 
+        font-weight: 700; 
+        color: #fbbf24;
+        background: rgba(251, 191, 36, 0.12);
+        padding: 2px 8px;
+        border-radius: 6px;
+        border: 1px solid rgba(251, 191, 36, 0.25);
+        margin: 4px 0 8px 0;
+    }
+
+    /* Styled Buttons */
+    div.stButton > button {
+        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #f8fafc;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.25s ease;
+    }
+    div.stButton > button:hover {
+        background: linear-gradient(180deg, #e50914 0%, #b80710 100%);
+        border-color: #e50914;
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 18px rgba(229, 9, 20, 0.4);
+    }
+
+    /* Video Player Frame */
+    .video-container {
+        position: relative;
+        padding-bottom: 56.25%;
+        height: 0;
+        overflow: hidden;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    }
+    .video-container iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+    }
+
+    /* Mobile Adaptations */
+    @media (max-width: 768px) {
+        .hero-banner {
+            padding: 1.5rem 1rem;
+        }
+        [data-testid="column"] {
+            min-width: 145px !important;
+            flex: 1 1 45% !important;
+            margin-bottom: 1rem !important;
+        }
+    }
+    </style>
+
+    <div class="hero-banner">
+        <div class="hero-pill">⚡ Powered by Gemini AI & TMDB</div>
+        <h1 class="hero-title">🎬 CINEBOT</h1>
+        <p class="hero-subtitle">Intelligent Film Discovery, Semantic Search & Instant Streaming Guides</p>
     </div>
     """,
     unsafe_allow_html=True,
